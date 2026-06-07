@@ -36,6 +36,28 @@ assert_file_contains() {
 	fi
 }
 
+assert_symlink_target() {
+	local path="$1"
+	local expected="$2"
+
+	if [ ! -L "$path" ]; then
+		printf 'Expected symlink: %s\n' "$path" >&2
+		exit 1
+	fi
+
+	if [ "$(readlink "$path")" != "$expected" ]; then
+		printf 'Expected %s to point to %s (got %s)\n' "$path" "$expected" "$(readlink "$path")" >&2
+		exit 1
+	fi
+}
+
+assert_regular_file() {
+	if [ -L "$1" ] || [ ! -f "$1" ]; then
+		printf 'Expected a regular file (not a symlink): %s\n' "$1" >&2
+		exit 1
+	fi
+}
+
 assert_file_not_contains() {
 	local path="$1"
 	local needle="$2"
@@ -78,9 +100,13 @@ main() {
 	assert_exists "$home_dir/.config/opencode/opencode.json"
 	assert_file_contains "$home_dir/.config/opencode/opencode.json" '"share": "disabled"'
 	assert_symlink_resolves_to "$home_dir/.config/opencode/agents" "$REPO_ROOT/opencode/agents"
+	# opencode reads instructions from a global AGENTS.md → canonical pi file
+	assert_symlink_target "$home_dir/.config/opencode/AGENTS.md" "$home_dir/.pi/agent/AGENTS.md"
 
 	HOME="$home_dir" make sync-claude
-	assert_exists "$home_dir/.claude/CLAUDE.md"
+	# CLAUDE.md is now a symlink to the canonical pi AGENTS.md
+	assert_symlink_target "$home_dir/.claude/CLAUDE.md" "$home_dir/.pi/agent/AGENTS.md"
+	assert_file_contains "$home_dir/.claude/CLAUDE.md" 'You are an experienced, pragmatic software engineer.'
 	assert_exists "$home_dir/.claude/settings.json"
 	assert_symlink_resolves_to "$home_dir/.claude/agents" "$REPO_ROOT/claude/.claude/agents"
 	assert_symlink_resolves_to "$home_dir/.claude/skills" "$REPO_ROOT/claude/.claude/skills"
@@ -88,7 +114,9 @@ main() {
 	assert_not_exists "$home_dir/.claude/skills/uv-package-manager/SKILL.md"
 
 	HOME="$home_dir" make sync-pi
-	assert_symlink_resolves_to "$home_dir/.pi/agent/AGENTS.md" "$home_dir/.claude/CLAUDE.md"
+	# pi owns the canonical instructions as a real generated file
+	assert_regular_file "$home_dir/.pi/agent/AGENTS.md"
+	assert_file_contains "$home_dir/.pi/agent/AGENTS.md" 'You are an experienced, pragmatic software engineer.'
 	assert_exists "$home_dir/.pi/agent/settings.json"
 	assert_file_contains "$home_dir/.pi/agent/settings.json" 'npm:pi-subagents'
 }

@@ -6,14 +6,13 @@ Run `make sync-claude` from the repo root to install everything.
 
 `sync-claude` is conservative: if `~/.claude/CLAUDE.md`, `~/.claude/settings.json`, or the target symlinks already contain unmanaged local contents, it stops instead of overwriting them. Use `make sync-claude-force` when you want to replace local contents explicitly.
 
+The shared instructions live in one canonical file, `~/.pi/agent/AGENTS.md` (pi owns it). `~/.claude/CLAUDE.md` is a symlink to it, so Claude Code, pi, and OpenCode all read the same instructions. The instruction source is tool-neutral and lives in `agents-md/` at the repo root (not under `claude/`).
+
 ## Directory Layout
 
 ```
 claude/
 ├── .claude/
-│   ├── CLAUDE.base.md              # Shared engineering principles (tracked)
-│   ├── CLAUDE.personal.md          # Your personal instructions (gitignored)
-│   ├── CLAUDE.personal.md.example  # Template for the above
 │   ├── agents/                     # Specialized subagents → ~/.claude/agents/
 │   └── skills/                     # Reusable skills → ~/.claude/skills/
 ├── claude_settings.json.template          # Base settings (tracked)
@@ -21,27 +20,32 @@ claude/
 └── claude_settings.personal.json.example # Template for the above
 ```
 
+The shared instruction source (`AGENTS.base.md`, `AGENTS.personal.md`) lives in
+`agents-md/` at the repo root — see the top-level README and `docs/ai.md`.
+
 `sync-claude` symlinks `agents/` and `skills/` directly into `~/.claude/`.
-`CLAUDE.md` and `settings.json` are generated files — do not edit them directly.
+`~/.claude/CLAUDE.md` is a symlink to the canonical `~/.pi/agent/AGENTS.md`;
+`settings.json` is a generated file. Do not edit either directly — edit the
+sources and re-run `make sync-claude`.
 
 ## Personal Configuration
 
 Two files let you override shared config without touching tracked files.
 Both are gitignored so your changes stay local.
 
-### CLAUDE.personal.md — instructions for Claude
+### AGENTS.personal.md — instructions for your agents
 
-Controls how Claude behaves: your name, preferred language, custom rules, safe words, etc.
+Controls how the agents behave: your name, preferred language, custom rules, safe words, etc.
 
 ```bash
-cp claude/.claude/CLAUDE.personal.md.example claude/.claude/CLAUDE.personal.md
+cp agents-md/AGENTS.personal.md.example agents-md/AGENTS.personal.md
 # Edit to taste, then:
 make sync-claude
 ```
 
-`sync-claude` concatenates `CLAUDE.base.md` + `CLAUDE.personal.md` → `~/.claude/CLAUDE.md`.
-Personal content appends after the base, so your rules take precedence.
-If `~/.claude/CLAUDE.md` already exists with different contents, `sync-claude` stops instead of overwriting it.
+`sync-claude` concatenates `AGENTS.base.md` + `AGENTS.personal.md` → the canonical `~/.pi/agent/AGENTS.md`
+(which `~/.claude/CLAUDE.md` symlinks to). Personal content appends after the base, so your rules take precedence.
+If `~/.pi/agent/AGENTS.md` already exists with different contents, the sync stops instead of overwriting it — run `make sync-pi-force` to replace it.
 
 ### claude_settings.personal.json — settings overrides
 

@@ -1,5 +1,18 @@
 # AI Tooling
 
+## Shared instructions (AGENTS.md)
+
+All three agents read one canonical instruction file, generated from
+`agents-md/AGENTS.base.md` (+ optional gitignored `agents-md/AGENTS.personal.md`):
+
+- Canonical file: `~/.pi/agent/AGENTS.md` (a real file — pi owns it)
+- `~/.claude/CLAUDE.md` → symlink → `~/.pi/agent/AGENTS.md` (Claude Code)
+- `~/.config/opencode/AGENTS.md` → symlink → `~/.pi/agent/AGENTS.md` (OpenCode)
+
+Any of `make sync-claude` / `sync-opencode` / `sync-pi` regenerates the canonical
+file first, so it always exists before the symlinks are created. If the canonical
+file has drifted from the repo, the sync stops; run `make sync-pi-force` to replace it.
+
 ## Claude Code
 
 Claude Code config lives in `claude/`.
@@ -19,6 +32,7 @@ Detailed Claude setup and personal overrides are documented in `claude/README.md
 
 OpenCode agents live in `opencode/agents/`.
 The generated `~/.config/opencode/opencode.json` comes from the Jsonnet source under `jsonnet/`.
+Global instructions come from `~/.config/opencode/AGENTS.md`, which symlinks to the canonical pi file above.
 
 Install:
 
@@ -26,7 +40,7 @@ Install:
 make sync-opencode
 ```
 
-If `~/.config/opencode/opencode.json` or `~/.config/opencode/agents` already contains unmanaged contents, the sync stops.
+If `~/.config/opencode/opencode.json`, `~/.config/opencode/agents`, or `~/.config/opencode/AGENTS.md` already contains unmanaged contents, the sync stops.
 Use `make sync-opencode-force` to replace them explicitly.
 
 See `jsonnet/README.md` for the config source, supported models, and work-overlay flow.
@@ -48,7 +62,7 @@ Install:
 make sync-pi
 ```
 
-This symlinks `~/.pi/agent/AGENTS.md` to `~/.claude/CLAUDE.md` and injects shared packages into `~/.pi/agent/settings.json`, keeping personal settings (provider, model, etc.) untouched.
+pi owns the canonical `~/.pi/agent/AGENTS.md` (see *Shared instructions* above). `make sync-pi` regenerates it and injects shared packages into `~/.pi/agent/settings.json`, keeping personal settings (provider, model, etc.) untouched.
 
 ## AI Agents
 
