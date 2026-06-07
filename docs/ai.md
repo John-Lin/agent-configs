@@ -80,17 +80,30 @@ Tracked shared agents currently include:
 
 ## Skills
 
-Tracked shared skills currently include:
+Skills are tool-neutral and shared via one canonical location, the same way as the
+instructions. The source lives in the repo-root `skills/` package; `make sync-skills`
+stows each skill to `~/.agents/skills/<name>/SKILL.md`.
+
+Discovery per tool:
+
+- **OpenCode** and **pi** read `~/.agents/skills/` natively — no symlink needed.
+- **Claude Code** reads only `~/.claude/skills/`, so `make sync-claude` points
+  `~/.claude/skills → ~/.agents/skills`.
+
+Install:
+
+```bash
+make sync-skills
+```
+
+Tracked shared skills:
 
 - `architecture-diagram` - standalone architecture diagrams as HTML/SVG
 - `find-docs` - Context7-powered documentation lookup
 - `gh-cli` - GitHub CLI workflow reference
-- `obsidian-bases` - Obsidian Bases files and views
-- `obsidian-cli` - Obsidian vault CLI workflows
-- `obsidian-markdown` - Obsidian-flavored Markdown editing
-- `omarchy` - Linux desktop/window manager customization
-- `qmd` - markdown knowledge-base search
 - `test-driven-development` - TDD workflow
+- `omarchy` - Linux desktop/window manager customization (a machine-local pointer;
+  linked only on machines where omarchy is installed)
 
 ## MCP Servers
 

@@ -27,15 +27,17 @@ want to replace local contents.
 ## Common Commands
 
 ```bash
-make sync-claude        # Claude Code config (CLAUDE.md→AGENTS.md, settings.json, agents, skills)
+make sync-claude        # Claude Code config (CLAUDE.md→AGENTS.md, settings.json, agents)
 make sync-ccstatusline  # ccstatusline config
 make sync-opencode      # OpenCode agents + generated opencode.json + AGENTS.md
 make sync-pi            # pi canonical AGENTS.md + packages injection
+make sync-skills        # shared skills → ~/.agents/skills/<name>
 
 make sync-agents-md-force  # regenerate canonical AGENTS.md only (after editing AGENTS.personal.md)
 make sync-claude-force
 make sync-opencode-force
 make sync-pi-force
+make sync-skills-force
 
 make test
 make clean
@@ -48,6 +50,7 @@ make clean
 ## Repo Layout
 
 - `agents-md/` - shared, tool-neutral instruction source (canonical `AGENTS.md`)
+- `skills/` - shared, tool-neutral skills, stowed to `~/.agents/skills/<name>`
 - `claude/` - Claude Code config and local override templates
 - `ccstatusline/` - Claude status line config
 - `opencode/` - OpenCode agents
@@ -72,6 +75,11 @@ The shared instructions are generated once as the canonical
 symlinks: `~/.claude/CLAUDE.md` and `~/.config/opencode/AGENTS.md`. Any of
 `make sync-claude` / `sync-opencode` / `sync-pi` regenerates the canonical file
 as needed.
+
+Shared skills follow the same tool-neutral idea: `make sync-skills` stows them to
+`~/.agents/skills/<name>`. OpenCode and pi read that path natively; Claude Code
+reaches them through `~/.claude/skills → ~/.agents/skills` (set up by
+`make sync-claude`). See `docs/ai.md`.
 
 Migrating a machine that already had the old dotfiles installed? See
 `MIGRATION.md`.

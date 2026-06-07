@@ -166,6 +166,7 @@ test_sync_claude_force_overwrites_generated_files() {
 
 	HOME="$home_dir" make sync-claude-force >"$TEST_OUTPUT" 2>&1
 	assert_symlink_target "$home_dir/.claude/agents" "$REPO_ROOT/claude/.claude/agents"
+	assert_symlink_target "$home_dir/.claude/skills" "$home_dir/.agents/skills"
 	assert_symlink_target "$home_dir/.claude/CLAUDE.md" "$home_dir/.pi/agent/AGENTS.md"
 	assert_contains "$home_dir/.claude/CLAUDE.md" "You are an experienced, pragmatic software engineer."
 	assert_not_contains "$home_dir/.claude/CLAUDE.md" 'custom claude'

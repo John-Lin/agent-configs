@@ -82,8 +82,8 @@ main() {
 
 	cd "$REPO_ROOT"
 
-	assert_not_exists "$REPO_ROOT/claude/.claude/skills/web-browser"
-	assert_not_exists "$REPO_ROOT/claude/.claude/skills/uv-package-manager/SKILL.md"
+	assert_not_exists "$REPO_ROOT/skills/.agents/skills/web-browser"
+	assert_not_exists "$REPO_ROOT/skills/.agents/skills/uv-package-manager/SKILL.md"
 	assert_file_not_contains "$REPO_ROOT/claude/README.md" "skills/web-browser"
 	assert_file_not_contains "$REPO_ROOT/claude/README.md" "uv-package-manager"
 	assert_file_contains "$REPO_ROOT/docs/ai.md" '- `typescript-pro` - TypeScript specialist'
@@ -103,13 +103,20 @@ main() {
 	# opencode reads instructions from a global AGENTS.md → canonical pi file
 	assert_symlink_target "$home_dir/.config/opencode/AGENTS.md" "$home_dir/.pi/agent/AGENTS.md"
 
+	HOME="$home_dir" make sync-skills
+	# Shared skills land as one symlink per skill under ~/.agents/skills/
+	assert_symlink_resolves_to "$home_dir/.agents/skills/find-docs" "$REPO_ROOT/skills/.agents/skills/find-docs"
+	assert_exists "$home_dir/.agents/skills/find-docs/SKILL.md"
+
 	HOME="$home_dir" make sync-claude
 	# CLAUDE.md is now a symlink to the canonical pi AGENTS.md
 	assert_symlink_target "$home_dir/.claude/CLAUDE.md" "$home_dir/.pi/agent/AGENTS.md"
 	assert_file_contains "$home_dir/.claude/CLAUDE.md" 'You are an experienced, pragmatic software engineer.'
 	assert_exists "$home_dir/.claude/settings.json"
 	assert_symlink_resolves_to "$home_dir/.claude/agents" "$REPO_ROOT/claude/.claude/agents"
-	assert_symlink_resolves_to "$home_dir/.claude/skills" "$REPO_ROOT/claude/.claude/skills"
+	# Claude reaches skills via ~/.claude/skills -> ~/.agents/skills
+	assert_symlink_target "$home_dir/.claude/skills" "$home_dir/.agents/skills"
+	assert_exists "$home_dir/.claude/skills/find-docs/SKILL.md"
 	assert_not_exists "$home_dir/.claude/skills/web-browser"
 	assert_not_exists "$home_dir/.claude/skills/uv-package-manager/SKILL.md"
 

@@ -117,27 +117,31 @@ rm -f ~/.config/ccstatusline/settings.json.bak.* \
 
 ---
 
-# Migration: CLAUDE.md → canonical AGENTS.md (pi-owned)
+# Migration: CLAUDE.md → canonical AGENTS.md (pi-owned) + shared skills
 
 This is a **separate** migration from the dotfiles split above. It applies to a
 machine that was set up while `~/.claude/CLAUDE.md` was the canonical instruction
-file. The model is now inverted:
+file and skills lived under `claude/`. The model is now inverted, and skills moved
+to a tool-neutral home:
 
 | | Old layout | New layout |
 |---|---|---|
-| Canonical (real file) | `~/.claude/CLAUDE.md` | `~/.pi/agent/AGENTS.md` |
+| Canonical instructions (real file) | `~/.claude/CLAUDE.md` | `~/.pi/agent/AGENTS.md` |
 | `~/.claude/CLAUDE.md` | real generated file | symlink → `~/.pi/agent/AGENTS.md` |
 | `~/.pi/agent/AGENTS.md` | symlink → `~/.claude/CLAUDE.md` | the canonical real file |
 | `~/.config/opencode/AGENTS.md` | absent (used the `~/.claude/CLAUDE.md` fallback) | symlink → `~/.pi/agent/AGENTS.md` |
+| `~/.claude/skills` | symlink → `claude/.claude/skills` | symlink → `~/.agents/skills` |
+| `~/.agents/skills/<name>` | absent | stowed per-skill (read natively by OpenCode + pi) |
 
-The instruction **source** also moved in the repo: from `claude/.claude/CLAUDE.base.md`
-(later `AGENTS.base.md`) to `agents-md/AGENTS.base.md`.
+The **sources** also moved in the repo: instructions from `claude/.claude/CLAUDE.base.md`
+(later `AGENTS.base.md`) to `agents-md/AGENTS.base.md`, and skills from
+`claude/.claude/skills/` to the `skills/` stow package.
 
-These steps only touch the instruction files. They deliberately **do not** touch
-`~/.claude/settings.json` or `~/.config/opencode/opencode.json` — those are
-unrelated and may be hand-tuned, so do not use the `-force` targets here. The
-`~/.claude/{agents,skills}` and `~/.config/opencode/agents` symlinks are also
-unaffected (their source paths did not move), so leave them as-is.
+These steps only touch the instruction and skill symlinks. They deliberately **do
+not** touch `~/.claude/settings.json` or `~/.config/opencode/opencode.json` — those
+are unrelated and may be hand-tuned, so do not use the `-force` targets here. The
+`~/.claude/agents` and `~/.config/opencode/agents` symlinks are unaffected (their
+source paths did not move), so leave them as-is.
 
 **Which layout am I on?** `~/.pi/agent/AGENTS.md` is a **symlink** (or missing) on
 the old layout, and a **real file** once migrated:
@@ -183,6 +187,14 @@ fi
 # 4. Give OpenCode an explicit global AGENTS.md.
 mkdir -p ~/.config/opencode
 ln -snf ~/.pi/agent/AGENTS.md ~/.config/opencode/AGENTS.md
+
+# 5. Move skills to the shared ~/.agents/skills and re-point Claude's skills dir.
+#    The old ~/.claude/skills pointed into claude/.claude/skills, which moved, so
+#    that symlink now dangles. (OpenCode and pi read ~/.agents/skills natively — no
+#    symlink needed for them.)
+rm -f ~/.claude/skills            # old whole-dir symlink, now dangling (a symlink, not a real dir)
+make sync-skills                  # stow skills to ~/.agents/skills/<name>
+ln -snf ~/.agents/skills ~/.claude/skills
 ```
 
 ## Recovering personal content
@@ -232,13 +244,15 @@ matches your current live file. A mismatch has two causes:
 ```bash
 printf '%-30s ' '~/.pi/agent/AGENTS.md'
 [ -L ~/.pi/agent/AGENTS.md ] && echo 'symlink ❌ (want real file)' || echo 'real file ✅'
-for p in ~/.claude/CLAUDE.md ~/.config/opencode/AGENTS.md; do
+for p in ~/.claude/CLAUDE.md ~/.config/opencode/AGENTS.md ~/.claude/skills; do
   printf '%-30s -> %s  [%s]\n' "$p" "$(readlink "$p")" \
     "$([ -e "$p" ] && echo OK || echo DANGLING)"
 done
+ls ~/.agents/skills    # one entry per skill, symlinked into the repo
 ```
 
-Both symlinks should read `OK` and point at the real `~/.pi/agent/AGENTS.md`.
+The instruction symlinks should read `OK` and point at the real `~/.pi/agent/AGENTS.md`,
+and `~/.claude/skills` should point at `~/.agents/skills`.
 
 ## Updating personal instructions afterward
 
