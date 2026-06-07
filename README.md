@@ -64,6 +64,9 @@ Personal/machine-specific files stay gitignored:
 (`~/.pi/agent/AGENTS.md -> ~/.claude/CLAUDE.md`), so run `make sync-claude`
 first.
 
+Migrating a machine that already had the old dotfiles installed? See
+`MIGRATION.md`.
+
 Detailed setup:
 - `claude/README.md`
 - `jsonnet/README.md`
