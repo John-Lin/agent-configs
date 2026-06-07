@@ -18,13 +18,15 @@ Only **symlinks** break — they pointed into the old `dotfiles/` tree:
 | `~/.config/opencode/agents` | `dotfiles/opencode/agents` | `agent-configs/opencode/agents` |
 | `~/.config/ccstatusline/settings.json` | `dotfiles/ccstatusline/...` | `agent-configs/ccstatusline/...` |
 
-These are **not** affected and need no migration:
+These are **not** affected by the repo split and need no migration:
 
-- `~/.claude/CLAUDE.md`, `~/.claude/settings.json`, `~/.config/opencode/opencode.json`
-  are generated regular files, not symlinks. They contain no repo paths, so they
-  keep working as-is.
-- `~/.pi/agent/AGENTS.md → ~/.claude/CLAUDE.md` references your home directory,
-  not the repo. Unchanged.
+- `~/.claude/settings.json` and `~/.config/opencode/opencode.json` are generated
+  regular files, not symlinks. They contain no repo paths, so they keep working as-is.
+
+Note: the shared instructions now use the AGENTS.md model — the canonical file is
+the real `~/.pi/agent/AGENTS.md`, and `~/.claude/CLAUDE.md` /
+`~/.config/opencode/AGENTS.md` symlink to it. Running `make sync-claude` /
+`sync-opencode` / `sync-pi` sets this up; see `docs/ai.md`.
 
 ## Prerequisites
 
@@ -38,7 +40,7 @@ cd ~/dotfiles && git pull
 
 Copy your gitignored personal files onto the new machine if you use them:
 
-- `claude/.claude/CLAUDE.personal.md`
+- `claude/.claude/AGENTS.personal.md`
 - `claude/claude_settings.personal.json`
 - `jsonnet/opencode_work.libsonnet` (work overlay, kept outside the repo)
 
@@ -75,7 +77,7 @@ rm -f ~/.claude/agents ~/.claude/skills ~/.config/opencode/agents ~/.config/ccst
 make sync-claude         # ~/.claude/{agents,skills} + regenerate CLAUDE.md, settings.json
 make sync-ccstatusline   # ~/.config/ccstatusline/settings.json
 make sync-opencode       # ~/.config/opencode/agents + regenerate opencode.json
-make sync-pi             # relink ~/.pi/agent/AGENTS.md + inject packages
+make sync-pi             # regenerate canonical ~/.pi/agent/AGENTS.md + inject packages
 ```
 
 > **If `sync-claude` or `sync-opencode` stops with "already exists with different

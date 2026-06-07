@@ -27,13 +27,14 @@ want to replace local contents.
 ## Common Commands
 
 ```bash
-make sync-claude        # Claude Code config (CLAUDE.md, settings.json, agents, skills)
+make sync-claude        # Claude Code config (CLAUDE.md→AGENTS.md, settings.json, agents, skills)
 make sync-ccstatusline  # ccstatusline config
-make sync-opencode      # OpenCode agents + generated opencode.json
-make sync-pi            # pi AGENTS.md symlink + packages injection
+make sync-opencode      # OpenCode agents + generated opencode.json + AGENTS.md
+make sync-pi            # pi canonical AGENTS.md + packages injection
 
 make sync-claude-force
 make sync-opencode-force
+make sync-pi-force
 
 make test
 make clean
@@ -56,13 +57,19 @@ make clean
 
 Personal/machine-specific files stay gitignored:
 
-- `claude/.claude/CLAUDE.personal.md` (merged into `~/.claude/CLAUDE.md`)
+- `claude/.claude/AGENTS.personal.md` (merged into the canonical `~/.pi/agent/AGENTS.md`)
 - `claude/claude_settings.personal.json` (merged into `~/.claude/settings.json`)
 - `jsonnet/opencode_work.libsonnet` (work overlay, kept outside this repo)
 
-`make sync-pi` links pi to the generated Claude instructions
-(`~/.pi/agent/AGENTS.md -> ~/.claude/CLAUDE.md`), so run `make sync-claude`
-first.
+Because these are gitignored, they live on one machine only. Copy them to each
+new machine yourself before running the sync targets — otherwise the sync
+falls back to base-only output and your personal overrides are silently dropped.
+
+The shared instructions are generated once as the canonical
+`~/.pi/agent/AGENTS.md` (pi owns it). Claude Code and OpenCode point at it via
+symlinks: `~/.claude/CLAUDE.md` and `~/.config/opencode/AGENTS.md`. Any of
+`make sync-claude` / `sync-opencode` / `sync-pi` regenerates the canonical file
+as needed.
 
 Migrating a machine that already had the old dotfiles installed? See
 `MIGRATION.md`.

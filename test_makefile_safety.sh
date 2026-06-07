@@ -166,8 +166,35 @@ test_sync_claude_force_overwrites_generated_files() {
 
 	HOME="$home_dir" make sync-claude-force >"$TEST_OUTPUT" 2>&1
 	assert_symlink_target "$home_dir/.claude/agents" "$REPO_ROOT/claude/.claude/agents"
+	assert_symlink_target "$home_dir/.claude/CLAUDE.md" "$home_dir/.pi/agent/AGENTS.md"
 	assert_contains "$home_dir/.claude/CLAUDE.md" "You are an experienced, pragmatic software engineer."
 	assert_not_contains "$home_dir/.claude/CLAUDE.md" 'custom claude'
+}
+
+test_sync_pi_preserves_existing_canonical() {
+	local home_dir
+	home_dir=$(mktemp -d)
+	trap '[ -n "${home_dir-}" ] && rm -rf "$home_dir"' RETURN
+
+	mkdir -p "$home_dir/.pi/agent"
+	printf 'custom agents\n' >"$home_dir/.pi/agent/AGENTS.md"
+
+	assert_make_fails "$home_dir" sync-pi
+	assert_file_exists "$home_dir/.pi/agent/AGENTS.md"
+	assert_contains "$home_dir/.pi/agent/AGENTS.md" 'custom agents'
+}
+
+test_sync_pi_force_overwrites_canonical() {
+	local home_dir
+	home_dir=$(mktemp -d)
+	trap '[ -n "${home_dir-}" ] && rm -rf "$home_dir"' RETURN
+
+	mkdir -p "$home_dir/.pi/agent"
+	printf 'custom agents\n' >"$home_dir/.pi/agent/AGENTS.md"
+
+	HOME="$home_dir" make sync-pi-force >"$TEST_OUTPUT" 2>&1
+	assert_contains "$home_dir/.pi/agent/AGENTS.md" "You are an experienced, pragmatic software engineer."
+	assert_not_contains "$home_dir/.pi/agent/AGENTS.md" 'custom agents'
 }
 
 test_clean_claude_preserves_custom_files() {
@@ -209,6 +236,8 @@ main() {
 	test_clean_force_preserves_unmanaged_opencode_directory
 	test_sync_claude_preserves_existing_generated_files
 	test_sync_claude_force_overwrites_generated_files
+	test_sync_pi_preserves_existing_canonical
+	test_sync_pi_force_overwrites_canonical
 	test_clean_claude_preserves_custom_files
 	test_clean_opencode_preserves_unmanaged_directory
 }

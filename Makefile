@@ -41,21 +41,27 @@ elif [ -e "$$target" ]; then \
 fi
 endef
 
-define build_claude_outputs
-if [ -f "$(REPO_ROOT)/claude/.claude/CLAUDE.personal.md" ]; then \
-	echo "  Merging base + personal → CLAUDE.md"; \
-	{ cat "$(REPO_ROOT)/claude/.claude/CLAUDE.base.md"; echo ""; cat "$(REPO_ROOT)/claude/.claude/CLAUDE.personal.md"; } > "$(1)"; \
+# Merge base + optional personal instructions into the file at $(1).
+# This is the canonical AGENTS.md content, owned by ~/.pi/agent/AGENTS.md.
+define build_agents_md
+if [ -f "$(REPO_ROOT)/claude/.claude/AGENTS.personal.md" ]; then \
+	echo "  Merging base + personal → AGENTS.md"; \
+	{ cat "$(REPO_ROOT)/claude/.claude/AGENTS.base.md"; echo ""; cat "$(REPO_ROOT)/claude/.claude/AGENTS.personal.md"; } > "$(1)"; \
 else \
-	echo "  No CLAUDE.personal.md found, using base only"; \
-	echo "  💡 Copy CLAUDE.personal.md.example → CLAUDE.personal.md to customize"; \
-	cp "$(REPO_ROOT)/claude/.claude/CLAUDE.base.md" "$(1)"; \
-fi; \
+	echo "  No AGENTS.personal.md found, using base only"; \
+	echo "  💡 Copy AGENTS.personal.md.example → AGENTS.personal.md to customize"; \
+	cp "$(REPO_ROOT)/claude/.claude/AGENTS.base.md" "$(1)"; \
+fi
+endef
+
+# Merge settings template + optional personal overrides into the file at $(1).
+define build_settings
 echo "  Generating settings.json..."; \
 if [ -f "$(REPO_ROOT)/claude/claude_settings.personal.json" ]; then \
 	echo "  Merging template + personal settings.json"; \
-	jq -s '.[0] * .[1]' "$(REPO_ROOT)/claude/claude_settings.json.template" "$(REPO_ROOT)/claude/claude_settings.personal.json" > "$(2)"; \
+	jq -s '.[0] * .[1]' "$(REPO_ROOT)/claude/claude_settings.json.template" "$(REPO_ROOT)/claude/claude_settings.personal.json" > "$(1)"; \
 else \
-	cp "$(REPO_ROOT)/claude/claude_settings.json.template" "$(2)"; \
+	cp "$(REPO_ROOT)/claude/claude_settings.json.template" "$(1)"; \
 fi
 endef
 
@@ -84,31 +90,45 @@ sync:
 	@echo "  make sync-opencode      - Install OpenCode configuration (agents + opencode.json)"
 	@echo "  make sync-pi            - Install pi configuration (AGENTS.md + settings.json)"
 
+# Generate the canonical instructions file at ~/.pi/agent/AGENTS.md.
+# pi owns this file; Claude Code and OpenCode symlink to it. Every sync target
+# that needs the instructions depends on this so the canonical file always exists.
+sync-agents-md:
+	@echo "📝 Generating canonical AGENTS.md (~/.pi/agent/AGENTS.md)..."
+	@set -e; \
+	mkdir -p ~/.pi/agent; \
+	tmp_agents="$$(mktemp /tmp/agents-md.XXXXXX)"; \
+	cleanup() { rm -f "$$tmp_agents"; }; \
+	trap cleanup EXIT; \
+	$(call build_agents_md,$$tmp_agents); \
+	if [ -e "$${HOME}/.pi/agent/AGENTS.md" ] && [ ! -L "$${HOME}/.pi/agent/AGENTS.md" ] && ! cmp -s "$$tmp_agents" "$${HOME}/.pi/agent/AGENTS.md"; then \
+		echo "❌ $${HOME}/.pi/agent/AGENTS.md already exists with different contents"; \
+		echo "   Move it away manually or run make sync-pi-force"; \
+		exit 1; \
+	fi; \
+	mv "$$tmp_agents" "$${HOME}/.pi/agent/AGENTS.md"
+
 # Install Claude Code configuration
-sync-claude:
+# CLAUDE.md is a symlink to the canonical ~/.pi/agent/AGENTS.md.
+sync-claude: sync-agents-md
 	@echo "🤖 Installing Claude Code configuration..."
 	@set -e; \
 	mkdir -p ~/.claude; \
 	command -v jq >/dev/null 2>&1 || { echo "❌ jq is not installed. Please install it first."; exit 1; }; \
-	tmp_claude_md="$$(mktemp /tmp/claude-md.XXXXXX)"; \
 	tmp_settings="$$(mktemp /tmp/claude-settings.XXXXXX)"; \
-	cleanup() { rm -f "$$tmp_claude_md" "$$tmp_settings"; }; \
+	cleanup() { rm -f "$$tmp_settings"; }; \
 	trap cleanup EXIT; \
-	$(call build_claude_outputs,$$tmp_claude_md,$$tmp_settings); \
-	if [ -e "$${HOME}/.claude/CLAUDE.md" ] && ! cmp -s "$$tmp_claude_md" "$${HOME}/.claude/CLAUDE.md"; then \
-		echo "❌ $${HOME}/.claude/CLAUDE.md already exists with different contents"; \
-		echo "   Move it away manually or run make sync-claude-force"; \
-		exit 1; \
-	fi; \
+	$(call build_settings,$$tmp_settings); \
 	if [ -e "$${HOME}/.claude/settings.json" ] && ! cmp -s "$$tmp_settings" "$${HOME}/.claude/settings.json"; then \
 		echo "❌ $${HOME}/.claude/settings.json already exists with different contents"; \
 		echo "   Move it away manually or run make sync-claude-force"; \
 		exit 1; \
 	fi; \
+	$(call ensure_safe_symlink,$${HOME}/.claude/CLAUDE.md,$${HOME}/.pi/agent/AGENTS.md,sync-claude-force); \
 	$(call ensure_safe_symlink,$${HOME}/.claude/agents,$(REPO_ROOT)/claude/.claude/agents,sync-claude-force); \
 	$(call ensure_safe_symlink,$${HOME}/.claude/skills,$(REPO_ROOT)/claude/.claude/skills,sync-claude-force); \
-	mv "$$tmp_claude_md" "$${HOME}/.claude/CLAUDE.md"; \
 	mv "$$tmp_settings" "$${HOME}/.claude/settings.json"; \
+	ln -snf "$${HOME}/.pi/agent/AGENTS.md" "$${HOME}/.claude/CLAUDE.md"; \
 	ln -snf "$(REPO_ROOT)/claude/.claude/agents" "$${HOME}/.claude/agents"; \
 	ln -snf "$(REPO_ROOT)/claude/.claude/skills" "$${HOME}/.claude/skills"
 	@echo "✅ Claude Code configuration installed"
@@ -133,7 +153,8 @@ sync-ccstatusline: require-stow
 	@echo "✅ ccstatusline configuration installed"
 
 # Install OpenCode configuration (agents + opencode.json from jsonnet)
-sync-opencode:
+# Global instructions come from ~/.config/opencode/AGENTS.md → canonical pi file.
+sync-opencode: sync-agents-md
 	@echo "🤖 Installing OpenCode configuration..."
 	@mkdir -p ~/.config/opencode
 	@command -v jsonnet >/dev/null 2>&1 || { echo "❌ jsonnet is not installed. Please install it first."; exit 1; }
@@ -149,23 +170,24 @@ sync-opencode:
 		exit 1; \
 	fi; \
 	$(call ensure_safe_symlink,$${HOME}/.config/opencode/agents,$(REPO_ROOT)/opencode/agents,sync-opencode-force); \
+	$(call ensure_safe_symlink,$${HOME}/.config/opencode/AGENTS.md,$${HOME}/.pi/agent/AGENTS.md,sync-opencode-force); \
 	mv "$$tmp_opencode" "$${HOME}/.config/opencode/opencode.json"; \
-	ln -snf "$(REPO_ROOT)/opencode/agents" "$${HOME}/.config/opencode/agents"
+	ln -snf "$(REPO_ROOT)/opencode/agents" "$${HOME}/.config/opencode/agents"; \
+	ln -snf "$${HOME}/.pi/agent/AGENTS.md" "$${HOME}/.config/opencode/AGENTS.md"
 	@echo "✅ OpenCode configuration installed (env=$(OPENCODE_ENV))"
 
 sync-opencode-force:
 	@echo "🤖 Installing OpenCode configuration (force)..."
 	@mkdir -p ~/.config/opencode
-	@rm -f ~/.config/opencode/opencode.json
+	@rm -f ~/.config/opencode/opencode.json ~/.config/opencode/AGENTS.md
 	@rm -rf ~/.config/opencode/agents
 	@$(MAKE) sync-opencode
 
-# Install pi configuration (AGENTS.md symlinks to ~/.claude/CLAUDE.md; packages injected into settings.json)
-sync-pi:
+# Install pi configuration (owns canonical AGENTS.md; packages injected into settings.json)
+sync-pi: sync-agents-md
 	@echo "🤖 Installing pi configuration..."
 	@mkdir -p ~/.pi/agent
 	@command -v jq >/dev/null 2>&1 || { echo "❌ jq is not installed. Please install it first."; exit 1; }
-	@ln -snf ~/.claude/CLAUDE.md ~/.pi/agent/AGENTS.md
 	@if [ -f ~/.pi/agent/settings.json ]; then \
 		existing_packages=$$(jq '.packages' ~/.pi/agent/settings.json); \
 		incoming_packages=$$(jq '.' "$(REPO_ROOT)/pi/packages.json"); \
@@ -194,16 +216,23 @@ sync-pi:
 		jq -n '{packages: $$pkgs[0]}' --slurpfile pkgs "$(REPO_ROOT)/pi/packages.json" > ~/.pi/agent/settings.json; \
 	fi
 	@echo "✅ pi configuration installed"
-	@echo "  ~/.pi/agent/AGENTS.md -> ~/.claude/CLAUDE.md"
+	@echo "  ~/.pi/agent/AGENTS.md (canonical instructions)"
 	@echo "  ~/.pi/agent/settings.json (packages injected)"
+
+sync-pi-force:
+	@echo "🤖 Installing pi configuration (force)..."
+	@mkdir -p ~/.pi/agent
+	@rm -f ~/.pi/agent/AGENTS.md
+	@$(MAKE) sync-pi
 
 # Remove all symlinks and generated files (with confirmation)
 clean:
 	@echo "⚠️  WARNING: This will remove all agent-config configurations!"
 	@echo "  - ~/.claude/ (CLAUDE.md, settings.json, agents, skills)"
-	@echo "  - ~/.pi/agent/AGENTS.md"
+	@echo "  - ~/.pi/agent/AGENTS.md (canonical instructions)"
 	@echo "  - ~/.config/opencode/opencode.json"
 	@echo "  - ~/.config/opencode/agents"
+	@echo "  - ~/.config/opencode/AGENTS.md"
 	@echo ""
 	@read -p "Are you sure? [y/N] " -n 1 -r; \
 	echo ""; \
@@ -226,13 +255,12 @@ clean-claude:
 	@set -e; \
 	mkdir -p ~/.claude; \
 	command -v jq >/dev/null 2>&1 || { echo "❌ jq is not installed. Please install it first."; exit 1; }; \
-	tmp_claude_md="$$(mktemp /tmp/claude-md.XXXXXX)"; \
 	tmp_settings="$$(mktemp /tmp/claude-settings.XXXXXX)"; \
-	cleanup() { rm -f "$$tmp_claude_md" "$$tmp_settings"; }; \
+	cleanup() { rm -f "$$tmp_settings"; }; \
 	trap cleanup EXIT; \
-	$(call build_claude_outputs,$$tmp_claude_md,$$tmp_settings); \
-	$(call remove_managed_file,$${HOME}/.claude/CLAUDE.md,$$tmp_claude_md); \
+	$(call build_settings,$$tmp_settings); \
 	$(call remove_managed_file,$${HOME}/.claude/settings.json,$$tmp_settings)
+	@$(call remove_managed_path,$${HOME}/.claude/CLAUDE.md,$${HOME}/.pi/agent/AGENTS.md)
 	@$(call remove_managed_path,$${HOME}/.claude/agents,$(REPO_ROOT)/claude/.claude/agents)
 	@$(call remove_managed_path,$${HOME}/.claude/skills,$(REPO_ROOT)/claude/.claude/skills)
 	@echo "✅ Claude Code configuration removed"
@@ -250,11 +278,17 @@ clean-opencode:
 		echo "  ⚠️  jsonnet not found, skipping opencode.json cleanup"; \
 	fi
 	@$(call remove_managed_path,$${HOME}/.config/opencode/agents,$(REPO_ROOT)/opencode/agents)
+	@$(call remove_managed_path,$${HOME}/.config/opencode/AGENTS.md,$${HOME}/.pi/agent/AGENTS.md)
 	@echo "✅ OpenCode configuration removed"
 
 clean-pi:
 	@echo "🧹 Removing pi configuration..."
-	@rm -f ~/.pi/agent/AGENTS.md
+	@set -e; \
+	tmp_agents="$$(mktemp /tmp/agents-md.XXXXXX)"; \
+	cleanup() { rm -f "$$tmp_agents"; }; \
+	trap cleanup EXIT; \
+	$(call build_agents_md,$$tmp_agents); \
+	$(call remove_managed_file,$${HOME}/.pi/agent/AGENTS.md,$$tmp_agents)
 	@echo "  (settings.json left untouched — it is your personal file)"
 	@echo "✅ pi configuration removed"
 
@@ -289,4 +323,4 @@ check-syntax:
 	done
 	@echo "✅ Syntax check passed"
 
-.PHONY: all require-stow clean clean-force clean-claude clean-opencode clean-pi sync sync-claude sync-claude-force sync-ccstatusline sync-opencode sync-opencode-force sync-pi test test-safety test-sync-smoke check-syntax
+.PHONY: all require-stow clean clean-force clean-claude clean-opencode clean-pi sync sync-agents-md sync-claude sync-claude-force sync-ccstatusline sync-opencode sync-opencode-force sync-pi sync-pi-force test test-safety test-sync-smoke check-syntax
