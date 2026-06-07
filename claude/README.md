@@ -13,20 +13,20 @@ The shared instructions live in one canonical file, `~/.pi/agent/AGENTS.md` (pi 
 ```
 claude/
 ├── .claude/
-│   ├── agents/                     # Specialized subagents → ~/.claude/agents/
-│   └── skills/                     # Reusable skills → ~/.claude/skills/
+│   └── agents/                     # Specialized subagents → ~/.claude/agents/
 ├── claude_settings.json.template          # Base settings (tracked)
 ├── claude_settings.personal.json          # Your personal settings (gitignored)
 └── claude_settings.personal.json.example # Template for the above
 ```
 
-The shared instruction source (`AGENTS.base.md`, `AGENTS.personal.md`) lives in
-`agents-md/` at the repo root — see the top-level README and `docs/ai.md`.
+Two shared sources are tool-neutral and live at the repo root, not under `claude/`:
+the instruction source (`agents-md/AGENTS.base.md`, `AGENTS.personal.md`) and the
+skills (`skills/`, stowed to `~/.agents/skills/`). See the top-level README and `docs/ai.md`.
 
-`sync-claude` symlinks `agents/` and `skills/` directly into `~/.claude/`.
-`~/.claude/CLAUDE.md` is a symlink to the canonical `~/.pi/agent/AGENTS.md`;
-`settings.json` is a generated file. Do not edit either directly — edit the
-sources and re-run `make sync-claude`.
+`sync-claude` symlinks `agents/` into `~/.claude/` and points `~/.claude/skills`
+at the shared `~/.agents/skills/`. `~/.claude/CLAUDE.md` is a symlink to the
+canonical `~/.pi/agent/AGENTS.md`; `settings.json` is a generated file. Do not
+edit either directly — edit the sources and re-run `make sync-claude`.
 
 ## Personal Configuration
 
@@ -96,16 +96,20 @@ Common things to put here:
 
 See the [Claude Code settings reference](https://docs.anthropic.com/en/docs/claude-code/settings) for all available keys.
 
-## agents / skills
+## agents
 
-These are symlinked as-is into `~/.claude/`. Add files here and re-run `make sync-claude`
-(or just restart Claude Code — it picks up symlinked directories automatically).
-If the destination already contains unmanaged symlinks or files, `sync-claude` stops and asks you to move them away or run `make sync-claude-force`.
+`claude/.claude/agents/` is symlinked as-is into `~/.claude/agents/`. Add files here
+and re-run `make sync-claude` (or just restart Claude Code — it picks up symlinked
+directories automatically). If the destination already contains unmanaged symlinks or
+files, `sync-claude` stops and asks you to move them away or run `make sync-claude-force`.
 
 | Directory  | What goes here                          |
 |------------|-----------------------------------------|
 | `agents/`  | Subagent prompt files (`*.md`) — see source mapping below |
-| `skills/`  | Multi-file reusable skills (`*/SKILL.md`)|
+
+Skills are no longer under `claude/`. They live in the repo-root `skills/` package
+(`*/SKILL.md`), are stowed to `~/.agents/skills/<name>` by `make sync-skills`, and
+reach Claude Code via `~/.claude/skills → ~/.agents/skills`.
 
 ### Subagent sources
 
