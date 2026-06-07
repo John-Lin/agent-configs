@@ -171,6 +171,37 @@ test_sync_claude_force_overwrites_generated_files() {
 	assert_not_contains "$home_dir/.claude/CLAUDE.md" 'custom claude'
 }
 
+test_sync_agents_md_preserves_existing_canonical() {
+	local home_dir
+	home_dir=$(mktemp -d)
+	trap '[ -n "${home_dir-}" ] && rm -rf "$home_dir"' RETURN
+
+	mkdir -p "$home_dir/.pi/agent"
+	printf 'custom agents\n' >"$home_dir/.pi/agent/AGENTS.md"
+
+	assert_make_fails "$home_dir" sync-agents-md
+	assert_file_exists "$home_dir/.pi/agent/AGENTS.md"
+	assert_contains "$home_dir/.pi/agent/AGENTS.md" 'custom agents'
+}
+
+test_sync_agents_md_force_overwrites_canonical() {
+	local home_dir
+	home_dir=$(mktemp -d)
+	trap '[ -n "${home_dir-}" ] && rm -rf "$home_dir"' RETURN
+
+	mkdir -p "$home_dir/.pi/agent"
+	printf 'custom agents\n' >"$home_dir/.pi/agent/AGENTS.md"
+
+	HOME="$home_dir" make sync-agents-md-force >"$TEST_OUTPUT" 2>&1
+	assert_contains "$home_dir/.pi/agent/AGENTS.md" "You are an experienced, pragmatic software engineer."
+	assert_not_contains "$home_dir/.pi/agent/AGENTS.md" 'custom agents'
+	# Regenerating instructions must not touch pi's settings.json (unlike sync-pi-force).
+	if [ -e "$home_dir/.pi/agent/settings.json" ]; then
+		printf 'sync-agents-md-force unexpectedly created/modified settings.json\n' >&2
+		exit 1
+	fi
+}
+
 test_sync_pi_preserves_existing_canonical() {
 	local home_dir
 	home_dir=$(mktemp -d)
@@ -236,6 +267,8 @@ main() {
 	test_clean_force_preserves_unmanaged_opencode_directory
 	test_sync_claude_preserves_existing_generated_files
 	test_sync_claude_force_overwrites_generated_files
+	test_sync_agents_md_preserves_existing_canonical
+	test_sync_agents_md_force_overwrites_canonical
 	test_sync_pi_preserves_existing_canonical
 	test_sync_pi_force_overwrites_canonical
 	test_clean_claude_preserves_custom_files
