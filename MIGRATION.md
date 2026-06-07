@@ -40,7 +40,7 @@ cd ~/dotfiles && git pull
 
 Copy your gitignored personal files onto the new machine if you use them:
 
-- `claude/.claude/AGENTS.personal.md`
+- `agents-md/AGENTS.personal.md`
 - `claude/claude_settings.personal.json`
 - `jsonnet/opencode_work.libsonnet` (work overlay, kept outside the repo)
 

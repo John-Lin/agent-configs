@@ -18,6 +18,6 @@ claude/.claude/skills/**/node_modules/
 # Work-specific Jsonnet configs (machine-specific)
 jsonnet/*_work*
 
-# Personal Claude configuration (user-specific)
-claude/.claude/AGENTS.personal.md
+# Personal configuration (user-specific)
+agents-md/AGENTS.personal.md
 claude/claude_settings.personal.json

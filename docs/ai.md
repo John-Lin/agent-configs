@@ -3,7 +3,7 @@
 ## Shared instructions (AGENTS.md)
 
 All three agents read one canonical instruction file, generated from
-`claude/.claude/AGENTS.base.md` (+ optional gitignored `AGENTS.personal.md`):
+`agents-md/AGENTS.base.md` (+ optional gitignored `agents-md/AGENTS.personal.md`):
 
 - Canonical file: `~/.pi/agent/AGENTS.md` (a real file — pi owns it)
 - `~/.claude/CLAUDE.md` → symlink → `~/.pi/agent/AGENTS.md` (Claude Code)

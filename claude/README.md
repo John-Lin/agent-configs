@@ -6,22 +6,22 @@ Run `make sync-claude` from the repo root to install everything.
 
 `sync-claude` is conservative: if `~/.claude/CLAUDE.md`, `~/.claude/settings.json`, or the target symlinks already contain unmanaged local contents, it stops instead of overwriting them. Use `make sync-claude-force` when you want to replace local contents explicitly.
 
-The shared instructions live in one canonical file, `~/.pi/agent/AGENTS.md` (pi owns it). `~/.claude/CLAUDE.md` is a symlink to it, so Claude Code, pi, and OpenCode all read the same instructions.
+The shared instructions live in one canonical file, `~/.pi/agent/AGENTS.md` (pi owns it). `~/.claude/CLAUDE.md` is a symlink to it, so Claude Code, pi, and OpenCode all read the same instructions. The instruction source is tool-neutral and lives in `agents-md/` at the repo root (not under `claude/`).
 
 ## Directory Layout
 
 ```
 claude/
 ├── .claude/
-│   ├── AGENTS.base.md              # Shared engineering principles (tracked)
-│   ├── AGENTS.personal.md          # Your personal instructions (gitignored)
-│   ├── AGENTS.personal.md.example  # Template for the above
 │   ├── agents/                     # Specialized subagents → ~/.claude/agents/
 │   └── skills/                     # Reusable skills → ~/.claude/skills/
 ├── claude_settings.json.template          # Base settings (tracked)
 ├── claude_settings.personal.json          # Your personal settings (gitignored)
 └── claude_settings.personal.json.example # Template for the above
 ```
+
+The shared instruction source (`AGENTS.base.md`, `AGENTS.personal.md`) lives in
+`agents-md/` at the repo root — see the top-level README and `docs/ai.md`.
 
 `sync-claude` symlinks `agents/` and `skills/` directly into `~/.claude/`.
 `~/.claude/CLAUDE.md` is a symlink to the canonical `~/.pi/agent/AGENTS.md`;
@@ -38,7 +38,7 @@ Both are gitignored so your changes stay local.
 Controls how the agents behave: your name, preferred language, custom rules, safe words, etc.
 
 ```bash
-cp claude/.claude/AGENTS.personal.md.example claude/.claude/AGENTS.personal.md
+cp agents-md/AGENTS.personal.md.example agents-md/AGENTS.personal.md
 # Edit to taste, then:
 make sync-claude
 ```

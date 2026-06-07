@@ -44,13 +44,13 @@ endef
 # Merge base + optional personal instructions into the file at $(1).
 # This is the canonical AGENTS.md content, owned by ~/.pi/agent/AGENTS.md.
 define build_agents_md
-if [ -f "$(REPO_ROOT)/claude/.claude/AGENTS.personal.md" ]; then \
+if [ -f "$(REPO_ROOT)/agents-md/AGENTS.personal.md" ]; then \
 	echo "  Merging base + personal → AGENTS.md"; \
-	{ cat "$(REPO_ROOT)/claude/.claude/AGENTS.base.md"; echo ""; cat "$(REPO_ROOT)/claude/.claude/AGENTS.personal.md"; } > "$(1)"; \
+	{ cat "$(REPO_ROOT)/agents-md/AGENTS.base.md"; echo ""; cat "$(REPO_ROOT)/agents-md/AGENTS.personal.md"; } > "$(1)"; \
 else \
 	echo "  No AGENTS.personal.md found, using base only"; \
 	echo "  💡 Copy AGENTS.personal.md.example → AGENTS.personal.md to customize"; \
-	cp "$(REPO_ROOT)/claude/.claude/AGENTS.base.md" "$(1)"; \
+	cp "$(REPO_ROOT)/agents-md/AGENTS.base.md" "$(1)"; \
 fi
 endef
 

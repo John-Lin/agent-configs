@@ -46,6 +46,7 @@ make clean
 
 ## Repo Layout
 
+- `agents-md/` - shared, tool-neutral instruction source (canonical `AGENTS.md`)
 - `claude/` - Claude Code config and local override templates
 - `ccstatusline/` - Claude status line config
 - `opencode/` - OpenCode agents
@@ -57,7 +58,7 @@ make clean
 
 Personal/machine-specific files stay gitignored:
 
-- `claude/.claude/AGENTS.personal.md` (merged into the canonical `~/.pi/agent/AGENTS.md`)
+- `agents-md/AGENTS.personal.md` (merged into the canonical `~/.pi/agent/AGENTS.md`)
 - `claude/claude_settings.personal.json` (merged into `~/.claude/settings.json`)
 - `jsonnet/opencode_work.libsonnet` (work overlay, kept outside this repo)
 
