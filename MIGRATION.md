@@ -239,3 +239,27 @@ done
 ```
 
 Both symlinks should read `OK` and point at the real `~/.pi/agent/AGENTS.md`.
+
+## Updating personal instructions afterward
+
+Once `~/.pi/agent/AGENTS.md` is a real file, editing `agents-md/AGENTS.personal.md`
+(or creating it for the first time, on a machine that finished the migration
+base-only) and re-running `make sync-agents-md` is **refused** — the conservative
+guard won't overwrite the existing real canonical:
+
+```
+❌ ~/.pi/agent/AGENTS.md already exists with different contents
+   Move it away manually or run make sync-agents-md-force
+```
+
+Use the force target to regenerate just the instructions. It rebuilds the
+canonical from base + personal and leaves `~/.pi/agent/settings.json`,
+`~/.claude/settings.json`, and `~/.config/opencode/opencode.json` untouched
+(unlike `make sync-pi-force`, which also re-injects pi packages):
+
+```bash
+make sync-agents-md-force
+```
+
+The CLAUDE.md / OpenCode symlinks already point at the canonical, so they pick up
+the new content with no further steps.

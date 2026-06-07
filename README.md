@@ -32,6 +32,7 @@ make sync-ccstatusline  # ccstatusline config
 make sync-opencode      # OpenCode agents + generated opencode.json + AGENTS.md
 make sync-pi            # pi canonical AGENTS.md + packages injection
 
+make sync-agents-md-force  # regenerate canonical AGENTS.md only (after editing AGENTS.personal.md)
 make sync-claude-force
 make sync-opencode-force
 make sync-pi-force

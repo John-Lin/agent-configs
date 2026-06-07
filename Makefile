@@ -103,10 +103,19 @@ sync-agents-md:
 	$(call build_agents_md,$$tmp_agents); \
 	if [ -e "$${HOME}/.pi/agent/AGENTS.md" ] && [ ! -L "$${HOME}/.pi/agent/AGENTS.md" ] && ! cmp -s "$$tmp_agents" "$${HOME}/.pi/agent/AGENTS.md"; then \
 		echo "❌ $${HOME}/.pi/agent/AGENTS.md already exists with different contents"; \
-		echo "   Move it away manually or run make sync-pi-force"; \
+		echo "   Move it away manually or run make sync-agents-md-force"; \
 		exit 1; \
 	fi; \
 	mv "$$tmp_agents" "$${HOME}/.pi/agent/AGENTS.md"
+
+# Regenerate the canonical AGENTS.md, replacing an existing real file. Use after
+# editing AGENTS.personal.md when ~/.pi/agent/AGENTS.md is already a real file.
+# Unlike sync-pi-force, this touches only the instructions, not settings.json.
+sync-agents-md-force:
+	@echo "📝 Regenerating canonical AGENTS.md (force)..."
+	@mkdir -p ~/.pi/agent
+	@rm -f ~/.pi/agent/AGENTS.md
+	@$(MAKE) sync-agents-md
 
 # Install Claude Code configuration
 # CLAUDE.md is a symlink to the canonical ~/.pi/agent/AGENTS.md.
@@ -323,4 +332,4 @@ check-syntax:
 	done
 	@echo "✅ Syntax check passed"
 
-.PHONY: all require-stow clean clean-force clean-claude clean-opencode clean-pi sync sync-agents-md sync-claude sync-claude-force sync-ccstatusline sync-opencode sync-opencode-force sync-pi sync-pi-force test test-safety test-sync-smoke check-syntax
+.PHONY: all require-stow clean clean-force clean-claude clean-opencode clean-pi sync sync-agents-md sync-agents-md-force sync-claude sync-claude-force sync-ccstatusline sync-opencode sync-opencode-force sync-pi sync-pi-force test test-safety test-sync-smoke check-syntax
