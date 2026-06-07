@@ -135,16 +135,36 @@ The instruction **source** also moved in the repo: from `claude/.claude/CLAUDE.b
 
 These steps only touch the instruction files. They deliberately **do not** touch
 `~/.claude/settings.json` or `~/.config/opencode/opencode.json` — those are
-unrelated and may be hand-tuned, so do not use the `-force` targets here.
+unrelated and may be hand-tuned, so do not use the `-force` targets here. The
+`~/.claude/{agents,skills}` and `~/.config/opencode/agents` symlinks are also
+unaffected (their source paths did not move), so leave them as-is.
+
+**Which layout am I on?** `~/.pi/agent/AGENTS.md` is a **symlink** (or missing) on
+the old layout, and a **real file** once migrated:
 
 ```bash
+[ -L ~/.pi/agent/AGENTS.md ] && echo "old layout — migrate below" \
+  || { [ -e ~/.pi/agent/AGENTS.md ] && echo "already migrated (steps below are a safe no-op)" \
+       || echo "pi file missing — steps below will create it"; }
+```
+
+Re-running the steps on an already-migrated machine is a safe no-op.
+
+```bash
+# Adjust the path if you cloned the repo elsewhere (e.g. ~/agent-configs).
 cd ~/workspace/agent-configs && git pull
 
 # 1. Put your personal instructions at the new path, agents-md/AGENTS.personal.md.
-#    Relocate it if you kept one under an older path:
+#    Relocate one from an older path only if the new path doesn't already have it
+#    (never clobber an existing agents-md/AGENTS.personal.md):
 mkdir -p agents-md
-[ -f claude/.claude/CLAUDE.personal.md ] && mv claude/.claude/CLAUDE.personal.md agents-md/AGENTS.personal.md
-[ -f claude/.claude/AGENTS.personal.md ] && mv claude/.claude/AGENTS.personal.md agents-md/AGENTS.personal.md
+if [ ! -e agents-md/AGENTS.personal.md ]; then
+  for old in claude/.claude/CLAUDE.personal.md claude/.claude/AGENTS.personal.md; do
+    [ -f "$old" ] && { mv "$old" agents-md/AGENTS.personal.md; break; }
+  done
+else
+  echo "agents-md/AGENTS.personal.md already exists — keeping it; remove any stale old-path file yourself."
+fi
 #    (No personal file on disk but ~/.claude/CLAUDE.md has custom content beyond
 #     the shared base? See "Recovering personal content" below first.)
 
@@ -157,7 +177,7 @@ make sync-agents-md
 if cmp -s ~/.pi/agent/AGENTS.md ~/.claude/CLAUDE.md; then
   ln -snf ~/.pi/agent/AGENTS.md ~/.claude/CLAUDE.md
 else
-  echo "Content differs — do NOT re-point yet; reconcile first."
+  echo "Content differs — do NOT re-point yet; see 'Reconciling a mismatch' below."
 fi
 
 # 4. Give OpenCode an explicit global AGENTS.md.
@@ -180,9 +200,32 @@ tail -n +$((base_lines + 2)) ~/.claude/CLAUDE.md > agents-md/AGENTS.personal.md
   | cmp - ~/.claude/CLAUDE.md && echo "faithful ✅"
 ```
 
-If it prints `faithful ✅`, re-run from step 2. If `agents-md/AGENTS.personal.md`
-came out empty, your `~/.claude/CLAUDE.md` was base-only — just delete the empty
-file and continue.
+- Prints `faithful ✅` → re-run from step 2.
+- `agents-md/AGENTS.personal.md` came out empty → your `~/.claude/CLAUDE.md` was
+  base-only; delete the empty file and continue.
+- **No `faithful ✅` (cmp reports a difference)** → the shared base changed since
+  this machine's `CLAUDE.md` was generated, so the line-count split is unreliable.
+  Don't trust the auto-extracted file: open `~/.claude/CLAUDE.md`, copy only your
+  personal additions (everything below the shared base) into
+  `agents-md/AGENTS.personal.md` by hand, then continue. The new canonical will
+  intentionally pick up the base updates, so it won't byte-match the old
+  `CLAUDE.md` — see *Reconciling a mismatch* for re-pointing in that case.
+
+## Reconciling a mismatch
+
+Step 3 only re-points `~/.claude/CLAUDE.md` when the freshly generated canonical
+matches your current live file. A mismatch has two causes:
+
+- **You lost personal content** — the canonical is missing custom instructions
+  your live `CLAUDE.md` had. Recover them (above) before re-pointing.
+- **Intentional base update** — you edited `AGENTS.base.md` since this machine was
+  set up, so the canonical is *newer* than the live `CLAUDE.md`. This is expected.
+  Eyeball the diff, then re-point manually:
+
+  ```bash
+  diff ~/.claude/CLAUDE.md ~/.pi/agent/AGENTS.md   # review what changed
+  ln -snf ~/.pi/agent/AGENTS.md ~/.claude/CLAUDE.md
+  ```
 
 ## Verify
 
