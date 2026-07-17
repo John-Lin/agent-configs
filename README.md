@@ -31,7 +31,7 @@ make sync-claude        # Claude Code config (CLAUDE.md→AGENTS.md, settings.js
 make sync-ccstatusline  # ccstatusline config
 make sync-opencode      # OpenCode agents + generated opencode.json + AGENTS.md
 make sync-pi            # pi canonical AGENTS.md + packages injection
-make sync-skills        # shared skills → ~/.agents/skills/<name>
+make sync-skills        # published + local skills → ~/.agents/skills/<name>
 
 make sync-agents-md-force  # regenerate canonical AGENTS.md only (after editing AGENTS.personal.md)
 make sync-claude-force
@@ -50,7 +50,7 @@ make clean
 ## Repo Layout
 
 - `agents-md/` - shared, tool-neutral instruction source (canonical `AGENTS.md`)
-- `skills/` - shared, tool-neutral skills, stowed to `~/.agents/skills/<name>`
+- `skills/` - unpublished local skills, stowed to `~/.agents/skills/<name>`
 - `claude/` - Claude Code config and local override templates
 - `ccstatusline/` - Claude status line config
 - `opencode/` - OpenCode agents
@@ -76,10 +76,17 @@ symlinks: `~/.claude/CLAUDE.md` and `~/.config/opencode/AGENTS.md`. Any of
 `make sync-claude` / `sync-opencode` / `sync-pi` regenerates the canonical file
 as needed.
 
-Shared skills follow the same tool-neutral idea: `make sync-skills` stows them to
-`~/.agents/skills/<name>`. OpenCode and pi read that path natively; Claude Code
-reaches them through `~/.claude/skills → ~/.agents/skills` (set up by
+Shared skills use `~/.agents/skills/<name>` as the universal location. `make
+sync-skills` installs published skills from skills.sh with the pinned
+`skills@1.5.19` CLI, then uses GNU Stow for unpublished skills kept under
+`skills/.agents/skills/<name>`. OpenCode and pi read the universal path natively;
+Claude Code reaches it through `~/.claude/skills → ~/.agents/skills` (set up by
 `make sync-claude`). See `docs/ai.md`.
+
+To add a published skill, add another explicit `$(SKILLS_CLI) add ...` command to
+`sync-skills` and include its name in `clean-skills`. To add a private or local
+skill that is not on skills.sh, place its directory at
+`skills/.agents/skills/<name>/SKILL.md`; the existing Stow step installs it.
 
 Migrating a machine that already had the old dotfiles installed? See
 `MIGRATION.md`.

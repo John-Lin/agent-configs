@@ -3,6 +3,17 @@
 set -euo pipefail
 
 REPO_ROOT=$(pwd)
+CLEANUP_HOME=
+CLEANUP_LOCAL_SKILL=
+CLEANUP_OUTPUT=
+
+cleanup() {
+	[ -n "$CLEANUP_HOME" ] && rm -rf -- "$CLEANUP_HOME"
+	[ -n "$CLEANUP_LOCAL_SKILL" ] && rm -rf -- "$CLEANUP_LOCAL_SKILL"
+	[ -n "$CLEANUP_OUTPUT" ] && rm -f -- "$CLEANUP_OUTPUT"
+}
+
+trap cleanup EXIT
 
 assert_exists() {
 	if [ ! -e "$1" ]; then
@@ -69,21 +80,57 @@ assert_file_not_contains() {
 }
 
 assert_not_exists() {
-	if [ -e "$1" ]; then
+	if [ -e "$1" ] || [ -L "$1" ]; then
 		printf 'Expected path to not exist: %s\n' "$1" >&2
 		exit 1
 	fi
 }
 
+assert_not_symlink() {
+	if [ -L "$1" ]; then
+		printf 'Expected path to not be a symlink: %s\n' "$1" >&2
+		exit 1
+	fi
+}
+
+run_make() {
+	local home_dir="$1"
+	shift
+
+	if ! HOME="$home_dir" make "$@" >"$test_output" 2>&1; then
+		cat "$test_output" >&2
+		exit 1
+	fi
+}
+
 main() {
-	local home_dir
+	local home_dir local_skill_dir local_skill_name test_output
 	home_dir=$(mktemp -d)
-	trap '[ -n "${home_dir-}" ] && rm -rf "$home_dir"' EXIT
+	test_output=$(mktemp /tmp/sync-smoke.out.XXXXXX)
+	local_skill_name="smoke-local-skill-$$"
+	local_skill_dir="$REPO_ROOT/skills/.agents/skills/$local_skill_name"
+	if [ -e "$local_skill_dir" ] || [ -L "$local_skill_dir" ]; then
+		printf 'Refusing to overwrite test fixture path: %s\n' "$local_skill_dir" >&2
+		exit 1
+	fi
+	CLEANUP_HOME="$home_dir"
+	CLEANUP_LOCAL_SKILL="$local_skill_dir"
+	CLEANUP_OUTPUT="$test_output"
 
 	cd "$REPO_ROOT"
+	mkdir -p "$local_skill_dir"
+	cat >"$local_skill_dir/SKILL.md" <<'EOF'
+---
+name: smoke-local-skill
+description: Verify unpublished local skills are installed with GNU Stow.
+---
+EOF
 
 	assert_not_exists "$REPO_ROOT/skills/.agents/skills/web-browser"
 	assert_not_exists "$REPO_ROOT/skills/.agents/skills/uv-package-manager/SKILL.md"
+	assert_not_exists "$REPO_ROOT/skills/.agents/skills/architecture-diagram"
+	assert_not_exists "$REPO_ROOT/skills/.agents/skills/find-docs"
+	assert_not_exists "$REPO_ROOT/skills/.agents/skills/gh-cli"
 	assert_file_not_contains "$REPO_ROOT/claude/README.md" "skills/web-browser"
 	assert_file_not_contains "$REPO_ROOT/claude/README.md" "uv-package-manager"
 	assert_file_contains "$REPO_ROOT/docs/ai.md" '- `typescript-pro` - TypeScript specialist'
@@ -93,22 +140,29 @@ main() {
 	assert_file_contains "$REPO_ROOT/README.md" 'make sync-pi'
 	assert_file_contains "$REPO_ROOT/jsonnet/README.md" '| `gpt-5.5` | GPT-5.5 | 5.00 | 30.00 |'
 
-	HOME="$home_dir" make sync-ccstatusline
+	run_make "$home_dir" sync-ccstatusline
 	assert_symlink_resolves_to "$home_dir/.config/ccstatusline/settings.json" "$REPO_ROOT/ccstatusline/.config/ccstatusline/settings.json"
 
-	OPENCODE_WORK_CONFIG= HOME="$home_dir" make sync-opencode
+	OPENCODE_WORK_CONFIG= run_make "$home_dir" sync-opencode
 	assert_exists "$home_dir/.config/opencode/opencode.json"
 	assert_file_contains "$home_dir/.config/opencode/opencode.json" '"share": "disabled"'
 	assert_symlink_resolves_to "$home_dir/.config/opencode/agents" "$REPO_ROOT/opencode/agents"
 	# opencode reads instructions from a global AGENTS.md → canonical pi file
 	assert_symlink_target "$home_dir/.config/opencode/AGENTS.md" "$home_dir/.pi/agent/AGENTS.md"
 
-	HOME="$home_dir" make sync-skills
-	# Shared skills land as one symlink per skill under ~/.agents/skills/
-	assert_symlink_resolves_to "$home_dir/.agents/skills/find-docs" "$REPO_ROOT/skills/.agents/skills/find-docs"
+	run_make "$home_dir" sync-claude
+	# Published skills are installed by the pinned skills CLI into the universal directory.
+	assert_not_symlink "$home_dir/.agents/skills/architecture-diagram"
+	assert_not_symlink "$home_dir/.agents/skills/find-docs"
+	assert_not_symlink "$home_dir/.agents/skills/gh-cli"
+	assert_exists "$home_dir/.agents/skills/architecture-diagram/SKILL.md"
 	assert_exists "$home_dir/.agents/skills/find-docs/SKILL.md"
+	assert_exists "$home_dir/.agents/skills/gh-cli/SKILL.md"
+	assert_file_contains "$home_dir/.agents/.skill-lock.json" 'cocoon-ai/architecture-diagram-generator'
+	assert_file_contains "$home_dir/.agents/.skill-lock.json" 'upstash/context7'
+	assert_file_contains "$home_dir/.agents/.skill-lock.json" 'trailofbits/skills'
+	assert_symlink_resolves_to "$home_dir/.agents/skills/$local_skill_name" "$local_skill_dir"
 
-	HOME="$home_dir" make sync-claude
 	# CLAUDE.md is now a symlink to the canonical pi AGENTS.md
 	assert_symlink_target "$home_dir/.claude/CLAUDE.md" "$home_dir/.pi/agent/AGENTS.md"
 	assert_file_contains "$home_dir/.claude/CLAUDE.md" 'You are an experienced, pragmatic software engineer.'
@@ -120,12 +174,25 @@ main() {
 	assert_not_exists "$home_dir/.claude/skills/web-browser"
 	assert_not_exists "$home_dir/.claude/skills/uv-package-manager/SKILL.md"
 
-	HOME="$home_dir" make sync-pi
+	run_make "$home_dir" sync-pi
 	# pi owns the canonical instructions as a real generated file
 	assert_regular_file "$home_dir/.pi/agent/AGENTS.md"
 	assert_file_contains "$home_dir/.pi/agent/AGENTS.md" 'You are an experienced, pragmatic software engineer.'
 	assert_exists "$home_dir/.pi/agent/settings.json"
 	assert_file_contains "$home_dir/.pi/agent/settings.json" 'npm:pi-subagents'
+
+	mkdir -p "$home_dir/.agents/skills/unmanaged-skill"
+	printf '%s\n' 'keep me' >"$home_dir/.agents/skills/unmanaged-skill/SKILL.md"
+	run_make "$home_dir" clean-skills
+	assert_not_exists "$home_dir/.agents/skills/architecture-diagram"
+	assert_not_exists "$home_dir/.agents/skills/find-docs"
+	assert_not_exists "$home_dir/.agents/skills/gh-cli"
+	assert_not_exists "$home_dir/.agents/skills/$local_skill_name"
+	assert_file_not_contains "$home_dir/.agents/.skill-lock.json" 'cocoon-ai/architecture-diagram-generator'
+	assert_file_not_contains "$home_dir/.agents/.skill-lock.json" 'upstash/context7'
+	assert_file_not_contains "$home_dir/.agents/.skill-lock.json" 'trailofbits/skills'
+	assert_exists "$home_dir/.agents/skills/unmanaged-skill/SKILL.md"
+	assert_exists "$local_skill_dir/SKILL.md"
 }
 
 main "$@"

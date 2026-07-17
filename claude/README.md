@@ -19,9 +19,10 @@ claude/
 └── claude_settings.personal.json.example # Template for the above
 ```
 
-Two shared sources are tool-neutral and live at the repo root, not under `claude/`:
-the instruction source (`agents-md/AGENTS.base.md`, `AGENTS.personal.md`) and the
-skills (`skills/`, stowed to `~/.agents/skills/`). See the top-level README and `docs/ai.md`.
+Two shared sources are tool-neutral and live outside `claude/`: the instruction
+source (`agents-md/AGENTS.base.md`, `AGENTS.personal.md`) and the skills installed
+into `~/.agents/skills/` by the pinned skills CLI plus GNU Stow for unpublished
+local skills under `skills/`. See the top-level README and `docs/ai.md`.
 
 `sync-claude` symlinks `agents/` into `~/.claude/` and points `~/.claude/skills`
 at the shared `~/.agents/skills/`. `~/.claude/CLAUDE.md` is a symlink to the
@@ -107,9 +108,10 @@ files, `sync-claude` stops and asks you to move them away or run `make sync-clau
 |------------|-----------------------------------------|
 | `agents/`  | Subagent prompt files (`*.md`) — see source mapping below |
 
-Skills are no longer under `claude/`. They live in the repo-root `skills/` package
-(`*/SKILL.md`), are stowed to `~/.agents/skills/<name>` by `make sync-skills`, and
-reach Claude Code via `~/.claude/skills → ~/.agents/skills`.
+Skills are no longer under `claude/`. `make sync-skills` installs published skills
+with the pinned skills CLI and stows unpublished local skills from the repo-root
+`skills/` package into `~/.agents/skills/<name>`. They reach Claude Code via
+`~/.claude/skills → ~/.agents/skills`.
 
 ### Subagent sources
 

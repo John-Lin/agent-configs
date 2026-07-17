@@ -131,11 +131,12 @@ to a tool-neutral home:
 | `~/.pi/agent/AGENTS.md` | symlink → `~/.claude/CLAUDE.md` | the canonical real file |
 | `~/.config/opencode/AGENTS.md` | absent (used the `~/.claude/CLAUDE.md` fallback) | symlink → `~/.pi/agent/AGENTS.md` |
 | `~/.claude/skills` | symlink → `claude/.claude/skills` | symlink → `~/.agents/skills` |
-| `~/.agents/skills/<name>` | absent | stowed per-skill (read natively by OpenCode + pi) |
+| `~/.agents/skills/<name>` | absent | published skills installed by `skills`; local skills stowed per-skill (read natively by OpenCode + pi) |
 
 The **sources** also moved in the repo: instructions from `claude/.claude/CLAUDE.base.md`
-(later `AGENTS.base.md`) to `agents-md/AGENTS.base.md`, and skills from
-`claude/.claude/skills/` to the `skills/` stow package.
+(later `AGENTS.base.md`) to `agents-md/AGENTS.base.md`. Published skills now come
+from their upstream repositories through the pinned skills CLI; unpublished local
+skills live in the `skills/` Stow package.
 
 These steps only touch the instruction and skill symlinks. They deliberately **do
 not** touch `~/.claude/settings.json` or `~/.config/opencode/opencode.json` — those
@@ -193,7 +194,7 @@ ln -snf ~/.pi/agent/AGENTS.md ~/.config/opencode/AGENTS.md
 #    that symlink now dangles. (OpenCode and pi read ~/.agents/skills natively — no
 #    symlink needed for them.)
 rm -f ~/.claude/skills            # old whole-dir symlink, now dangling (a symlink, not a real dir)
-make sync-skills                  # stow skills to ~/.agents/skills/<name>
+make sync-skills                  # install published skills and stow local skills
 ln -snf ~/.agents/skills ~/.claude/skills
 ```
 
@@ -248,7 +249,7 @@ for p in ~/.claude/CLAUDE.md ~/.config/opencode/AGENTS.md ~/.claude/skills; do
   printf '%-30s -> %s  [%s]\n' "$p" "$(readlink "$p")" \
     "$([ -e "$p" ] && echo OK || echo DANGLING)"
 done
-ls ~/.agents/skills    # one entry per skill, symlinked into the repo
+ls ~/.agents/skills    # published copies plus symlinked local skills
 ```
 
 The instruction symlinks should read `OK` and point at the real `~/.pi/agent/AGENTS.md`,

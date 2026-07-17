@@ -80,9 +80,10 @@ Tracked shared agents currently include:
 
 ## Skills
 
-Skills are tool-neutral and shared via one canonical location, the same way as the
-instructions. The source lives in the repo-root `skills/` package; `make sync-skills`
-stows each skill to `~/.agents/skills/<name>/SKILL.md`.
+Skills are tool-neutral and shared through the universal
+`~/.agents/skills/<name>` location. `make sync-skills` uses the pinned
+`skills@1.5.19` CLI to install published skills there and GNU Stow to link
+unpublished local skills from `skills/.agents/skills/<name>` into the same location.
 
 Discovery per tool:
 
@@ -96,14 +97,16 @@ Install:
 make sync-skills
 ```
 
-Tracked shared skills:
+Published skills installed by the pinned CLI:
 
-- `architecture-diagram` - standalone architecture diagrams as HTML/SVG
-- `find-docs` - Context7-powered documentation lookup
-- `gh-cli` - GitHub CLI workflow reference
-- `test-driven-development` - TDD workflow
-- `omarchy` - Linux desktop/window manager customization (a machine-local pointer;
-  linked only on machines where omarchy is installed)
+- `architecture-diagram` from `cocoon-ai/architecture-diagram-generator`
+- `find-docs` from `upstash/context7`
+- `gh-cli` from `trailofbits/skills`
+
+For a private or unpublished skill, add
+`skills/.agents/skills/<name>/SKILL.md`; the Stow step installs it without requiring
+skills.sh. `omarchy` remains a machine-local pointer and is linked only where its
+target is installed.
 
 ## MCP Servers
 
