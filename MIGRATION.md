@@ -12,7 +12,7 @@ git switch main
 git pull --ff-only
 
 # Remove only legacy per-skill links created by the old Stow package.
-for name in architecture-diagram find-docs gh-cli; do
+for name in architecture-diagram find-docs gh-cli test-driven-development; do
   path="$HOME/.agents/skills/$name"
   if [ -L "$path" ]; then
     current=$(readlink "$path")
