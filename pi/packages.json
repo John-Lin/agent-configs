@@ -2,7 +2,6 @@
   {
     "source": "git:github.com/tmustier/pi-extensions",
     "extensions": [
-      "session-recap/index.ts",
       "usage-extension/index.ts"
     ],
     "skills": [
@@ -28,5 +27,7 @@
     "themes": [],
     "prompts": []
   },
-  "npm:pi-subagents"
+  "npm:pi-subagents",
+  "npm:pi-mcp-adapter",
+  "../../workspace/johnlin/ly-pi-extension"
 ]
