@@ -47,7 +47,7 @@ make sync-claude
 
 `sync-claude` concatenates `AGENTS.base.md` + `AGENTS.personal.md` → the canonical `~/.pi/agent/AGENTS.md`
 (which `~/.claude/CLAUDE.md` symlinks to). Personal content appends after the base, so your rules take precedence.
-If `~/.pi/agent/AGENTS.md` already exists with different contents, the sync stops instead of overwriting it — run `make sync-pi-force` to replace it.
+If `~/.pi/agent/AGENTS.md` already exists with different contents, the sync stops instead of overwriting it — run `make sync-agents-md-force` to regenerate only the canonical instructions.
 
 ### claude_settings.personal.json — settings overrides
 

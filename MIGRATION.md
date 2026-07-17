@@ -44,18 +44,19 @@ git clone git@github.com:John-Lin/agent-configs.git ~/workspace/agent-configs
 cd ~/dotfiles && git pull
 ```
 
-Copy your gitignored personal files onto the new machine if you use them:
+Copy your untracked personal and work inputs onto the new machine if you use them:
 
 - `agents-md/AGENTS.personal.md`
 - `claude/claude_settings.personal.json`
-- `jsonnet/opencode_work.libsonnet` (work overlay, kept outside the repo)
+- `opencode_work.libsonnet` in the external directory selected by
+  `OPENCODE_WORK_CONFIG`
 
 ## Option A — Re-point the symlinks (minimal, no regeneration)
 
-This is the lowest-risk path: it re-points the remaining repo-owned symlinks,
-installs skills through the pinned CLI, and never touches your generated
-`CLAUDE.md` / `settings.json` / `opencode.json`. Use it if you've hand-tuned any
-of those files.
+This is the lowest-risk path: it re-points the remaining repo-owned symlinks and
+installs skills through the pinned CLI without regenerating Claude instructions,
+Claude settings, or OpenCode configuration. The ccstatusline target separately
+backs up a hand-edited regular settings file before installing its managed link.
 
 ```bash
 AGENT_CONFIGS=~/workspace/agent-configs   # adjust to where you cloned it
@@ -63,13 +64,29 @@ AGENT_CONFIGS=~/workspace/agent-configs   # adjust to where you cloned it
 ln -snf "$AGENT_CONFIGS/claude/.claude/agents"  ~/.claude/agents
 ln -snf "$AGENT_CONFIGS/opencode/agents"        ~/.config/opencode/agents
 
-# Replace the old whole-directory skills link with CLI-managed per-skill links.
-rm -f ~/.claude/skills
+# Replace only a known legacy whole-directory skills link. Preserve an
+# already-migrated directory and refuse unknown symlinks.
+if [ -L ~/.claude/skills ]; then
+  current=$(readlink ~/.claude/skills)
+  case "$current" in
+    "$HOME/.agents/skills"|*/dotfiles/claude/.claude/skills|*/agent-configs/claude/.claude/skills)
+      rm -f ~/.claude/skills ;;
+    *) echo "Unknown ~/.claude/skills target: $current"; exit 1 ;;
+  esac
+fi
 ( cd "$AGENT_CONFIGS" && make sync-skills )
 
-# ccstatusline is stow-managed; re-create via stow so the link matches the repo
-rm -f ~/.config/ccstatusline/settings.json
-( cd "$AGENT_CONFIGS" && stow -t ~ ccstatusline )
+# Remove only the known stale dotfiles link. The make target backs up a regular,
+# hand-edited settings file before Stow installs the managed link.
+if [ -L ~/.config/ccstatusline/settings.json ]; then
+  current=$(readlink ~/.config/ccstatusline/settings.json)
+  case "$current" in
+    */dotfiles/ccstatusline/*) rm -f ~/.config/ccstatusline/settings.json ;;
+    */agent-configs/ccstatusline/*) : ;;
+    *) echo "Unknown ccstatusline symlink target: $current"; exit 1 ;;
+  esac
+fi
+( cd "$AGENT_CONFIGS" && make sync-ccstatusline )
 ```
 
 ## Option B — Full re-install via make
@@ -81,23 +98,43 @@ that has drifted from the repo — see the warning below.
 ```bash
 cd ~/workspace/agent-configs
 
-# Remove the stale symlinks first (make refuses to clobber unmanaged symlinks)
-rm -f ~/.claude/agents ~/.claude/skills ~/.config/opencode/agents ~/.config/ccstatusline/settings.json
+# Remove the stale repo-owned agent symlinks first. The sync targets handle
+# ccstatusline regular-file backups and refuse unrelated symlinks.
+rm -f ~/.claude/agents ~/.config/opencode/agents
 
-make sync-claude         # ~/.claude/agents + CLI-managed skills + regenerate CLAUDE.md, settings.json
+# Replace only a known legacy whole-directory skills link.
+if [ -L ~/.claude/skills ]; then
+  current=$(readlink ~/.claude/skills)
+  case "$current" in
+    "$HOME/.agents/skills"|*/dotfiles/claude/.claude/skills|*/agent-configs/claude/.claude/skills)
+      rm -f ~/.claude/skills ;;
+    *) echo "Unknown ~/.claude/skills target: $current"; exit 1 ;;
+  esac
+fi
+
+# Remove only the known stale dotfiles ccstatusline link. Preserve a current
+# agent-configs link and let the make target back up regular files.
+if [ -L ~/.config/ccstatusline/settings.json ]; then
+  current=$(readlink ~/.config/ccstatusline/settings.json)
+  case "$current" in
+    */dotfiles/ccstatusline/*) rm -f ~/.config/ccstatusline/settings.json ;;
+    */agent-configs/ccstatusline/*) : ;;
+    *) echo "Unknown ccstatusline symlink target: $current"; exit 1 ;;
+  esac
+fi
+
+make sync-claude         # install Claude agents/settings, create the CLAUDE.md symlink, and install shared skills
 make sync-ccstatusline   # ~/.config/ccstatusline/settings.json
 make sync-opencode       # ~/.config/opencode/agents + regenerate opencode.json
 make sync-pi             # regenerate canonical ~/.pi/agent/AGENTS.md + inject packages
 ```
 
-> **If `sync-claude` or `sync-opencode` stops with "already exists with different
-> contents":** your live `~/.claude/CLAUDE.md` / `settings.json` /
-> `~/.config/opencode/opencode.json` has drifted from what the repo generates
-> (e.g. settings you changed by hand). That's the conservative guard working.
-> Reconcile the difference, or run the matching `-force` target
-> (`make sync-claude-force` / `make sync-opencode-force`) to replace the live
-> file with the repo's version. `-force` discards your local edits to those
-> generated files.
+> **If a sync stops with "already exists with different contents":** identify
+> which managed file drifted before forcing anything. If canonical
+> `~/.pi/agent/AGENTS.md` differs from the repository-generated instructions, run
+> `make sync-agents-md-force`. Use `make sync-claude-force` for Claude settings or
+> symlink conflicts, and `make sync-opencode-force` for OpenCode files or symlink
+> conflicts. These force targets discard local edits to the files they manage.
 
 ## Verify
 
@@ -146,9 +183,10 @@ The **sources** also moved in the repo: instructions from `claude/.claude/CLAUDE
 (later `AGENTS.base.md`) to `agents-md/AGENTS.base.md`. Skills now come from their
 upstream repositories through the pinned skills CLI.
 
-These steps only touch the instruction and skill symlinks. They deliberately **do
-not** touch `~/.claude/settings.json` or `~/.config/opencode/opencode.json` — those
-are unrelated and may be hand-tuned, so do not use the `-force` targets here. The
+These steps update the canonical instructions, instruction symlinks, and managed
+skills. They deliberately **do not** touch `~/.claude/settings.json` or
+`~/.config/opencode/opencode.json` — those are unrelated and may be hand-tuned,
+so do not use the `-force` targets here. The
 `~/.claude/agents` and `~/.config/opencode/agents` symlinks are unaffected (their
 source paths did not move), so leave them as-is.
 
@@ -197,9 +235,17 @@ fi
 mkdir -p ~/.config/opencode
 ln -snf ~/.pi/agent/AGENTS.md ~/.config/opencode/AGENTS.md
 
-# 5. Replace the old whole-directory Claude skills link. OpenCode and pi read
-#    ~/.agents/skills natively; the skills CLI creates Claude's per-skill links.
-rm -f ~/.claude/skills
+# 5. Replace only a known legacy whole-directory Claude skills link. Preserve an
+#    already-migrated directory and refuse unknown symlinks. OpenCode and pi read
+#    ~/.agents/skills natively.
+if [ -L ~/.claude/skills ]; then
+  current=$(readlink ~/.claude/skills)
+  case "$current" in
+    "$HOME/.agents/skills"|*/dotfiles/claude/.claude/skills|*/agent-configs/claude/.claude/skills)
+      rm -f ~/.claude/skills ;;
+    *) echo "Unknown ~/.claude/skills target: $current"; exit 1 ;;
+  esac
+fi
 make sync-skills                  # install upstream skills and Claude per-skill links
 ```
 

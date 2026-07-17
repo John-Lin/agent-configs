@@ -11,7 +11,8 @@ All three agents read one canonical instruction file, generated from
 
 Any of `make sync-claude` / `sync-opencode` / `sync-pi` regenerates the canonical
 file first, so it always exists before the symlinks are created. If the canonical
-file has drifted from the repo, the sync stops; run `make sync-pi-force` to replace it.
+file has drifted from the repo, the sync stops; run `make sync-agents-md-force` to
+regenerate only the canonical instructions.
 
 ## Claude Code
 

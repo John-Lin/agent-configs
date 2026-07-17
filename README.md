@@ -43,8 +43,8 @@ make clean
 ```
 
 - `make test` runs syntax checks, safety regression tests, and sync smoke tests.
-- `make clean` removes repo-managed symlinks and generated files while preserving
-  unmanaged local files.
+- `make clean` removes configuration managed by this project while preserving
+  unrelated local files.
 
 ## Repo Layout
 
@@ -58,15 +58,17 @@ make clean
 
 ## Personal Overrides
 
-Personal/machine-specific files stay gitignored:
+Personal and work-specific inputs are not tracked by this repository:
 
 - `agents-md/AGENTS.personal.md` (merged into the canonical `~/.pi/agent/AGENTS.md`)
 - `claude/claude_settings.personal.json` (merged into `~/.claude/settings.json`)
-- `jsonnet/opencode_work.libsonnet` (work overlay, kept outside this repo)
+- `opencode_work.libsonnet` in the external directory selected by
+  `OPENCODE_WORK_CONFIG`
 
-Because these are gitignored, they live on one machine only. Copy them to each
-new machine yourself before running the sync targets — otherwise the sync
-falls back to base-only output and your personal overrides are silently dropped.
+The first two files are gitignored and must be copied to each new machine before
+running sync targets; without them, sync uses only the tracked base/template.
+Keep the OpenCode work overlay outside this repository and pass its directory via
+`OPENCODE_WORK_CONFIG` when running `make sync-opencode`.
 
 The shared instructions are generated once as the canonical
 `~/.pi/agent/AGENTS.md` (pi owns it). Claude Code and OpenCode point at it via
@@ -75,7 +77,8 @@ symlinks: `~/.claude/CLAUDE.md` and `~/.config/opencode/AGENTS.md`. Any of
 as needed.
 
 Shared skills use `~/.agents/skills/<name>` as the universal location. `make
-sync-skills` installs them from skills.sh with the pinned `skills@1.5.19` CLI.
+sync-skills` installs them from their upstream repositories with the pinned
+`skills@1.5.19` CLI.
 OpenCode and pi read the universal path natively; the CLI creates one symlink per
 managed skill under `~/.claude/skills/` for Claude Code. See `docs/ai.md`.
 
@@ -96,7 +99,8 @@ Detailed setup:
 - Git, Make, GNU Stow (for ccstatusline)
 - `jq`
 - `jsonnet` (for `make sync-opencode`)
-- Node.js / `bun` (Claude Code, OpenCode, pi runtimes)
+- Node.js (provides `npx` for the pinned skills CLI)
+- `bun` if required by the locally installed agent runtimes
 - Python 3 (used by `make check-syntax`)
 
 ## License

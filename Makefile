@@ -268,7 +268,8 @@ clean:
 	@echo "  - ~/.config/opencode/opencode.json"
 	@echo "  - ~/.config/opencode/agents"
 	@echo "  - ~/.config/opencode/AGENTS.md"
-	@echo "  - ~/.agents/skills/ (shared skills)"
+	@echo "  - ~/.agents/skills/<managed-skill> (canonical copies)"
+	@echo "  - ~/.claude/skills/<managed-skill> (CLI-managed links)"
 	@echo ""
 	@read -p "Are you sure? [y/N] " -n 1 -r; \
 	echo ""; \
