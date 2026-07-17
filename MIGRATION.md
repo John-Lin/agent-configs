@@ -1,3 +1,69 @@
+# Migration: Stow-managed skills → pinned skills CLI
+
+Use this migration after PR #4 is merged. It removes only the known legacy skill
+symlinks created by this repository, then lets `skills@1.5.19` install canonical
+copies and Claude Code per-skill links. Other skills under `~/.agents/skills/` are
+left untouched.
+
+```bash
+cd ~/workspace/agent-configs   # adjust to your clone path
+git status --short             # stop and reconcile local changes before pulling
+git switch main
+git pull --ff-only
+
+# Remove only legacy per-skill links created by the old Stow package.
+for name in architecture-diagram find-docs gh-cli; do
+  path="$HOME/.agents/skills/$name"
+  if [ -L "$path" ]; then
+    current=$(readlink "$path")
+    case "$current" in
+      */agent-configs/skills/.agents/skills/"$name"|*/dotfiles/claude/.claude/skills/"$name")
+        rm -f "$path" ;;
+      *) echo "Unknown legacy skill target: $path -> $current"; exit 1 ;;
+    esac
+  fi
+done
+
+# Remove only a known legacy whole-directory Claude skills link. The new CLI
+# creates ~/.claude/skills as a directory containing one link per managed skill.
+if [ -L ~/.claude/skills ]; then
+  current=$(readlink ~/.claude/skills)
+  case "$current" in
+    "$HOME/.agents/skills"|*/dotfiles/claude/.claude/skills|*/agent-configs/claude/.claude/skills)
+      rm -f ~/.claude/skills ;;
+    *) echo "Unknown ~/.claude/skills target: $current"; exit 1 ;;
+  esac
+fi
+
+make sync-skills
+```
+
+If PR #4 has not been merged and you intentionally want to test it first, replace
+the `git switch main` / `git pull` commands with:
+
+```bash
+gh pr checkout 4
+```
+
+Verify the migrated layout:
+
+```bash
+npx --yes skills@1.5.19 ls -g --json
+ls -ld ~/.agents/skills/{architecture-diagram,find-docs,test-driven-development,grill-me,grill-with-docs,handoff}
+ls -ld ~/.claude/skills
+ls -l ~/.claude/skills/{architecture-diagram,find-docs,test-driven-development,grill-me,grill-with-docs,handoff}
+```
+
+Expected layout:
+
+- the six paths under `~/.agents/skills/` are canonical directories managed by
+  the skills CLI;
+- `~/.claude/skills/` is a real directory;
+- its six managed entries are per-skill symlinks created by the skills CLI;
+- `gh-cli` is intentionally no longer installed by this repository.
+
+---
+
 # Migration: dotfiles → agent-configs
 
 The Claude Code, OpenCode, ccstatusline, and pi configuration used to live in
