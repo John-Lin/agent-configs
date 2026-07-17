@@ -1,5 +1,9 @@
 # AI Tooling
 
+## Model references
+
+- [GPT-5.5 and GPT-5.6 pricing and performance](gpt-5-model-reference.md)
+
 ## Shared instructions (AGENTS.md)
 
 All three agents read one canonical instruction file, generated from
