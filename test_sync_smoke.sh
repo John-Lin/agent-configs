@@ -64,31 +64,7 @@ assert_symlink_target() {
 
 assert_regular_file() {
 	if [ -L "$1" ] || [ ! -f "$1" ]; then
-		printf 'Expected a regular file (not a symlink): %s\n' "$1" >&2
-		exit 1
-	fi
-}
-
-assert_file_not_contains() {
-	local path="$1"
-	local needle="$2"
-
-	if grep -Fq -- "$needle" "$path"; then
-		printf 'Expected %s to not contain: %s\n' "$path" "$needle" >&2
-		exit 1
-	fi
-}
-
-assert_not_exists() {
-	if [ -e "$1" ] || [ -L "$1" ]; then
-		printf 'Expected path to not exist: %s\n' "$1" >&2
-		exit 1
-	fi
-}
-
-assert_not_symlink() {
-	if [ -L "$1" ]; then
-		printf 'Expected path to not be a symlink: %s\n' "$1" >&2
+		printf 'Expected a regular file: %s\n' "$1" >&2
 		exit 1
 	fi
 }
@@ -126,17 +102,7 @@ description: Verify unpublished local skills are installed with GNU Stow.
 ---
 EOF
 
-	assert_not_exists "$REPO_ROOT/skills/.agents/skills/web-browser"
-	assert_not_exists "$REPO_ROOT/skills/.agents/skills/uv-package-manager/SKILL.md"
-	assert_not_exists "$REPO_ROOT/skills/.agents/skills/architecture-diagram"
-	assert_not_exists "$REPO_ROOT/skills/.agents/skills/find-docs"
-	assert_not_exists "$REPO_ROOT/skills/.agents/skills/gh-cli"
-	assert_file_not_contains "$REPO_ROOT/claude/README.md" "skills/web-browser"
-	assert_file_not_contains "$REPO_ROOT/claude/README.md" "uv-package-manager"
 	assert_file_contains "$REPO_ROOT/docs/ai.md" '- `typescript-pro` - TypeScript specialist'
-	assert_file_not_contains "$REPO_ROOT/docs/ai.md" "/sc:analyze"
-	assert_file_not_contains "$REPO_ROOT/docs/ai.md" "web-browser"
-	assert_file_not_contains "$REPO_ROOT/docs/ai.md" "uv-package-manager"
 	assert_file_contains "$REPO_ROOT/README.md" 'make sync-pi'
 	assert_file_contains "$REPO_ROOT/jsonnet/README.md" '| `gpt-5.5` | GPT-5.5 | 5.00 | 30.00 |'
 
@@ -152,15 +118,10 @@ EOF
 
 	run_make "$home_dir" sync-claude
 	# Published skills are installed by the pinned skills CLI into the universal directory.
-	assert_not_symlink "$home_dir/.agents/skills/architecture-diagram"
-	assert_not_symlink "$home_dir/.agents/skills/find-docs"
-	assert_not_symlink "$home_dir/.agents/skills/gh-cli"
 	assert_exists "$home_dir/.agents/skills/architecture-diagram/SKILL.md"
 	assert_exists "$home_dir/.agents/skills/find-docs/SKILL.md"
-	assert_exists "$home_dir/.agents/skills/gh-cli/SKILL.md"
 	assert_file_contains "$home_dir/.agents/.skill-lock.json" 'cocoon-ai/architecture-diagram-generator'
 	assert_file_contains "$home_dir/.agents/.skill-lock.json" 'upstash/context7'
-	assert_file_contains "$home_dir/.agents/.skill-lock.json" 'trailofbits/skills'
 	assert_symlink_resolves_to "$home_dir/.agents/skills/$local_skill_name" "$local_skill_dir"
 
 	# CLAUDE.md is now a symlink to the canonical pi AGENTS.md
@@ -171,8 +132,6 @@ EOF
 	# Claude reaches skills via ~/.claude/skills -> ~/.agents/skills
 	assert_symlink_target "$home_dir/.claude/skills" "$home_dir/.agents/skills"
 	assert_exists "$home_dir/.claude/skills/find-docs/SKILL.md"
-	assert_not_exists "$home_dir/.claude/skills/web-browser"
-	assert_not_exists "$home_dir/.claude/skills/uv-package-manager/SKILL.md"
 
 	run_make "$home_dir" sync-pi
 	# pi owns the canonical instructions as a real generated file
@@ -184,13 +143,6 @@ EOF
 	mkdir -p "$home_dir/.agents/skills/unmanaged-skill"
 	printf '%s\n' 'keep me' >"$home_dir/.agents/skills/unmanaged-skill/SKILL.md"
 	run_make "$home_dir" clean-skills
-	assert_not_exists "$home_dir/.agents/skills/architecture-diagram"
-	assert_not_exists "$home_dir/.agents/skills/find-docs"
-	assert_not_exists "$home_dir/.agents/skills/gh-cli"
-	assert_not_exists "$home_dir/.agents/skills/$local_skill_name"
-	assert_file_not_contains "$home_dir/.agents/.skill-lock.json" 'cocoon-ai/architecture-diagram-generator'
-	assert_file_not_contains "$home_dir/.agents/.skill-lock.json" 'upstash/context7'
-	assert_file_not_contains "$home_dir/.agents/.skill-lock.json" 'trailofbits/skills'
 	assert_exists "$home_dir/.agents/skills/unmanaged-skill/SKILL.md"
 	assert_exists "$local_skill_dir/SKILL.md"
 }

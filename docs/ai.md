@@ -101,7 +101,6 @@ Published skills installed by the pinned CLI:
 
 - `architecture-diagram` from `cocoon-ai/architecture-diagram-generator`
 - `find-docs` from `upstash/context7`
-- `gh-cli` from `trailofbits/skills`
 
 For a private or unpublished skill, add
 `skills/.agents/skills/<name>/SKILL.md`; the Stow step installs it without requiring

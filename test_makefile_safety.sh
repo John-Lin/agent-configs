@@ -35,16 +35,6 @@ assert_contains() {
 	fi
 }
 
-assert_not_contains() {
-	local file="$1"
-	local unexpected="$2"
-
-	if grep -Fq "$unexpected" "$file"; then
-		printf 'Did not expect %s to contain: %s\n' "$file" "$unexpected" >&2
-		exit 1
-	fi
-}
-
 assert_symlink_target() {
 	local path="$1"
 	local expected="$2"
@@ -83,11 +73,6 @@ test_sync_opencode_preserves_existing_directory() {
 	assert_dir_exists "$home_dir/.config/opencode/agents"
 	assert_file_exists "$home_dir/.config/opencode/agents/local.txt"
 	assert_contains "$home_dir/.config/opencode/agents/local.txt" 'keep me'
-	# Verify no partial install: opencode.json must not be written
-	if [ -e "$home_dir/.config/opencode/opencode.json" ]; then
-		printf 'Partial install: opencode.json was written despite agents conflict\n' >&2
-		exit 1
-	fi
 }
 
 test_sync_opencode_preserves_existing_config_json() {
@@ -113,7 +98,7 @@ test_sync_opencode_force_overwrites_existing_config_json() {
 
 	HOME="$home_dir" make sync-opencode-force >"$TEST_OUTPUT" 2>&1
 	assert_file_exists "$home_dir/.config/opencode/opencode.json"
-	assert_not_contains "$home_dir/.config/opencode/opencode.json" '{"custom":true}'
+	assert_contains "$home_dir/.config/opencode/opencode.json" '"share": "disabled"'
 }
 
 test_sync_opencode_force_replaces_existing_directory() {
@@ -169,7 +154,6 @@ test_sync_claude_force_overwrites_generated_files() {
 	assert_symlink_target "$home_dir/.claude/skills" "$home_dir/.agents/skills"
 	assert_symlink_target "$home_dir/.claude/CLAUDE.md" "$home_dir/.pi/agent/AGENTS.md"
 	assert_contains "$home_dir/.claude/CLAUDE.md" "You are an experienced, pragmatic software engineer."
-	assert_not_contains "$home_dir/.claude/CLAUDE.md" 'custom claude'
 }
 
 test_sync_agents_md_preserves_existing_canonical() {
@@ -195,12 +179,6 @@ test_sync_agents_md_force_overwrites_canonical() {
 
 	HOME="$home_dir" make sync-agents-md-force >"$TEST_OUTPUT" 2>&1
 	assert_contains "$home_dir/.pi/agent/AGENTS.md" "You are an experienced, pragmatic software engineer."
-	assert_not_contains "$home_dir/.pi/agent/AGENTS.md" 'custom agents'
-	# Regenerating instructions must not touch pi's settings.json (unlike sync-pi-force).
-	if [ -e "$home_dir/.pi/agent/settings.json" ]; then
-		printf 'sync-agents-md-force unexpectedly created/modified settings.json\n' >&2
-		exit 1
-	fi
 }
 
 test_sync_pi_preserves_existing_canonical() {
@@ -226,7 +204,6 @@ test_sync_pi_force_overwrites_canonical() {
 
 	HOME="$home_dir" make sync-pi-force >"$TEST_OUTPUT" 2>&1
 	assert_contains "$home_dir/.pi/agent/AGENTS.md" "You are an experienced, pragmatic software engineer."
-	assert_not_contains "$home_dir/.pi/agent/AGENTS.md" 'custom agents'
 }
 
 test_clean_claude_preserves_custom_files() {

@@ -187,7 +187,6 @@ sync-skills: require-stow require-npx
 	@mkdir -p ~/.agents/skills
 	$(SKILLS_CLI) add cocoon-ai/architecture-diagram-generator --skill architecture-diagram --global --agent opencode --yes
 	$(SKILLS_CLI) add upstash/context7 --skill find-docs --global --agent opencode --yes
-	$(SKILLS_CLI) add trailofbits/skills --skill gh-cli --global --agent opencode --yes
 	stow $(SKILLS_STOW_FLAGS) -t ~ skills
 	@$(call link_omarchy_skill)
 	@echo "✅ Skills installed to ~/.agents/skills/"
@@ -345,7 +344,7 @@ clean-skills:
 		echo "  ⚠️  stow not found, skipping local skill unlink"; \
 	fi
 	@if command -v npx >/dev/null 2>&1; then \
-		$(SKILLS_CLI) remove architecture-diagram find-docs gh-cli --global --agent universal --agent claude-code --yes; \
+		$(SKILLS_CLI) remove architecture-diagram find-docs --global --agent universal --agent claude-code --yes; \
 	else \
 		echo "  ⚠️  npx not found, skipping published skill removal"; \
 	fi
