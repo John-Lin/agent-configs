@@ -4,12 +4,10 @@ set -euo pipefail
 
 REPO_ROOT=$(pwd)
 CLEANUP_HOME=
-CLEANUP_LOCAL_SKILL=
 CLEANUP_OUTPUT=
 
 cleanup() {
 	[ -n "$CLEANUP_HOME" ] && rm -rf -- "$CLEANUP_HOME"
-	[ -n "$CLEANUP_LOCAL_SKILL" ] && rm -rf -- "$CLEANUP_LOCAL_SKILL"
 	[ -n "$CLEANUP_OUTPUT" ] && rm -f -- "$CLEANUP_OUTPUT"
 }
 
@@ -80,27 +78,13 @@ run_make() {
 }
 
 main() {
-	local home_dir local_skill_dir local_skill_name test_output
+	local home_dir test_output
 	home_dir=$(mktemp -d)
 	test_output=$(mktemp /tmp/sync-smoke.out.XXXXXX)
-	local_skill_name="smoke-local-skill-$$"
-	local_skill_dir="$REPO_ROOT/skills/.agents/skills/$local_skill_name"
-	if [ -e "$local_skill_dir" ] || [ -L "$local_skill_dir" ]; then
-		printf 'Refusing to overwrite test fixture path: %s\n' "$local_skill_dir" >&2
-		exit 1
-	fi
 	CLEANUP_HOME="$home_dir"
-	CLEANUP_LOCAL_SKILL="$local_skill_dir"
 	CLEANUP_OUTPUT="$test_output"
 
 	cd "$REPO_ROOT"
-	mkdir -p "$local_skill_dir"
-	cat >"$local_skill_dir/SKILL.md" <<'EOF'
----
-name: smoke-local-skill
-description: Verify unpublished local skills are installed with GNU Stow.
----
-EOF
 
 	assert_file_contains "$REPO_ROOT/docs/ai.md" '- `typescript-pro` - TypeScript specialist'
 	assert_file_contains "$REPO_ROOT/README.md" 'make sync-pi'
@@ -120,9 +104,10 @@ EOF
 	# Published skills are installed by the pinned skills CLI into the universal directory.
 	assert_exists "$home_dir/.agents/skills/architecture-diagram/SKILL.md"
 	assert_exists "$home_dir/.agents/skills/find-docs/SKILL.md"
+	assert_exists "$home_dir/.agents/skills/test-driven-development/SKILL.md"
 	assert_file_contains "$home_dir/.agents/.skill-lock.json" 'cocoon-ai/architecture-diagram-generator'
 	assert_file_contains "$home_dir/.agents/.skill-lock.json" 'upstash/context7'
-	assert_symlink_resolves_to "$home_dir/.agents/skills/$local_skill_name" "$local_skill_dir"
+	assert_file_contains "$home_dir/.agents/.skill-lock.json" 'obra/superpowers'
 
 	# CLAUDE.md is now a symlink to the canonical pi AGENTS.md
 	assert_symlink_target "$home_dir/.claude/CLAUDE.md" "$home_dir/.pi/agent/AGENTS.md"
@@ -144,7 +129,6 @@ EOF
 	printf '%s\n' 'keep me' >"$home_dir/.agents/skills/unmanaged-skill/SKILL.md"
 	run_make "$home_dir" clean-skills
 	assert_exists "$home_dir/.agents/skills/unmanaged-skill/SKILL.md"
-	assert_exists "$local_skill_dir/SKILL.md"
 }
 
 main "$@"

@@ -1,7 +1,7 @@
 # agent-configs
 
 Personal configuration for AI coding agents (Claude Code, OpenCode, pi) and the
-Claude status line, managed with `make` and `GNU Stow`. Split out of my
+Claude status line, managed with `make` and a pinned skills CLI. Split out of my
 [dotfiles](https://github.com/John-Lin/dotfiles) so editor/shell/desktop config
 and agent config can evolve independently.
 
@@ -31,13 +31,12 @@ make sync-claude        # Claude Code config (CLAUDE.md→AGENTS.md, settings.js
 make sync-ccstatusline  # ccstatusline config
 make sync-opencode      # OpenCode agents + generated opencode.json + AGENTS.md
 make sync-pi            # pi canonical AGENTS.md + packages injection
-make sync-skills        # published + local skills → ~/.agents/skills/<name>
+make sync-skills        # upstream skills → ~/.agents/skills/<name>
 
 make sync-agents-md-force  # regenerate canonical AGENTS.md only (after editing AGENTS.personal.md)
 make sync-claude-force
 make sync-opencode-force
 make sync-pi-force
-make sync-skills-force
 
 make test
 make clean
@@ -50,7 +49,6 @@ make clean
 ## Repo Layout
 
 - `agents-md/` - shared, tool-neutral instruction source (canonical `AGENTS.md`)
-- `skills/` - unpublished local skills, stowed to `~/.agents/skills/<name>`
 - `claude/` - Claude Code config and local override templates
 - `ccstatusline/` - Claude status line config
 - `opencode/` - OpenCode agents
@@ -77,16 +75,13 @@ symlinks: `~/.claude/CLAUDE.md` and `~/.config/opencode/AGENTS.md`. Any of
 as needed.
 
 Shared skills use `~/.agents/skills/<name>` as the universal location. `make
-sync-skills` installs published skills from skills.sh with the pinned
-`skills@1.5.19` CLI, then uses GNU Stow for unpublished skills kept under
-`skills/.agents/skills/<name>`. OpenCode and pi read the universal path natively;
-Claude Code reaches it through `~/.claude/skills → ~/.agents/skills` (set up by
-`make sync-claude`). See `docs/ai.md`.
+sync-skills` installs them from skills.sh with the pinned `skills@1.5.19` CLI.
+OpenCode and pi read the universal path natively; Claude Code reaches it through
+`~/.claude/skills → ~/.agents/skills` (set up by `make sync-claude`). See
+`docs/ai.md`.
 
-To add a published skill, add another explicit `$(SKILLS_CLI) add ...` command to
-`sync-skills` and include its name in `clean-skills`. To add a private or local
-skill that is not on skills.sh, place its directory at
-`skills/.agents/skills/<name>/SKILL.md`; the existing Stow step installs it.
+To add a skill, add another explicit `$(SKILLS_CLI) add ...` command to
+`sync-skills` and include its name in `clean-skills`.
 
 Migrating a machine that already had the old dotfiles installed? See
 `MIGRATION.md`.
@@ -99,7 +94,7 @@ Detailed setup:
 ## Requirements
 
 - macOS or Linux
-- Git, Make, GNU Stow
+- Git, Make, GNU Stow (for ccstatusline)
 - `jq`
 - `jsonnet` (for `make sync-opencode`)
 - Node.js / `bun` (Claude Code, OpenCode, pi runtimes)

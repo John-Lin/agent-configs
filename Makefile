@@ -6,7 +6,6 @@ SHELL := /bin/bash
 
 REPO_ROOT := $(abspath $(CURDIR))
 SKILLS_CLI := npx --yes skills@1.5.19
-SKILLS_STOW_FLAGS ?=
 
 # Auto-detect work environment via OPENCODE_WORK_CONFIG env var (path to external config dir)
 OPENCODE_ENV := $(if $(OPENCODE_WORK_CONFIG),work,personal)
@@ -94,7 +93,7 @@ sync:
 	@echo "  make sync-ccstatusline  - Install ccstatusline configuration"
 	@echo "  make sync-opencode      - Install OpenCode configuration (agents + opencode.json)"
 	@echo "  make sync-pi            - Install pi configuration (AGENTS.md + settings.json)"
-	@echo "  make sync-skills        - Install published and local skills to ~/.agents/skills/"
+	@echo "  make sync-skills        - Install published skills to ~/.agents/skills/"
 
 # Generate the canonical instructions file at ~/.pi/agent/AGENTS.md.
 # pi owns this file; Claude Code and OpenCode symlink to it. Every sync target
@@ -168,31 +167,15 @@ sync-ccstatusline: require-stow
 	@echo "✅ ccstatusline configuration installed"
 
 # Install published skills with the pinned skills CLI into the universal
-# ~/.agents/skills directory. Local unpublished skills remain in the skills/ Stow
-# package and are linked into the same directory. OpenCode and pi read this path
-# natively; Claude Code reaches it via ~/.claude/skills (see sync-claude).
-# omarchy is a Linux/omarchy system pointer (an absolute symlink Stow can't manage,
-# so it is excluded via skills/.stow-local-ignore). Link it separately, only where
-# its target resolves — a no-op on machines without omarchy installed.
-define link_omarchy_skill
-omarchy_src="$$(readlink "$(REPO_ROOT)/skills/.agents/skills/omarchy" 2>/dev/null)"; \
-if [ -n "$$omarchy_src" ] && [ -e "$$omarchy_src" ]; then \
-	ln -snf "$$omarchy_src" "$${HOME}/.agents/skills/omarchy"; \
-	echo "  Linked omarchy skill"; \
-fi
-endef
-
-sync-skills: require-stow require-npx
+# ~/.agents/skills directory. OpenCode and pi read this path natively; Claude Code
+# reaches it via ~/.claude/skills (see sync-claude).
+sync-skills: require-npx
 	@echo "🧩 Installing shared skills..."
 	@mkdir -p ~/.agents/skills
 	$(SKILLS_CLI) add cocoon-ai/architecture-diagram-generator --skill architecture-diagram --global --agent opencode --yes
 	$(SKILLS_CLI) add upstash/context7 --skill find-docs --global --agent opencode --yes
-	stow $(SKILLS_STOW_FLAGS) -t ~ skills
-	@$(call link_omarchy_skill)
+	$(SKILLS_CLI) add obra/superpowers --skill test-driven-development --global --agent opencode --yes
 	@echo "✅ Skills installed to ~/.agents/skills/"
-
-sync-skills-force:
-	@$(MAKE) SKILLS_STOW_FLAGS=-R sync-skills
 
 # Install OpenCode configuration (agents + opencode.json from jsonnet)
 # Global instructions come from ~/.config/opencode/AGENTS.md → canonical pi file.
@@ -338,17 +321,11 @@ clean-pi:
 
 clean-skills:
 	@echo "🧹 Removing shared skills..."
-	@if command -v stow >/dev/null 2>&1; then \
-		stow -D -t ~ skills; \
-	else \
-		echo "  ⚠️  stow not found, skipping local skill unlink"; \
-	fi
 	@if command -v npx >/dev/null 2>&1; then \
-		$(SKILLS_CLI) remove architecture-diagram find-docs --global --agent universal --agent claude-code --yes; \
+		$(SKILLS_CLI) remove architecture-diagram find-docs test-driven-development --global --agent opencode --agent universal --agent claude-code --yes; \
 	else \
 		echo "  ⚠️  npx not found, skipping published skill removal"; \
 	fi
-	@rm -f ~/.agents/skills/omarchy
 	@rmdir ~/.agents/skills ~/.agents 2>/dev/null || true
 	@echo "✅ Shared skills removed"
 
@@ -383,4 +360,4 @@ check-syntax:
 	done
 	@echo "✅ Syntax check passed"
 
-.PHONY: all require-stow require-npx clean clean-force clean-claude clean-skills clean-opencode clean-pi sync sync-agents-md sync-agents-md-force sync-claude sync-claude-force sync-ccstatusline sync-skills sync-skills-force sync-opencode sync-opencode-force sync-pi sync-pi-force test test-safety test-sync-smoke check-syntax
+.PHONY: all require-stow require-npx clean clean-force clean-claude clean-skills clean-opencode clean-pi sync sync-agents-md sync-agents-md-force sync-claude sync-claude-force sync-ccstatusline sync-skills sync-opencode sync-opencode-force sync-pi sync-pi-force test test-safety test-sync-smoke check-syntax

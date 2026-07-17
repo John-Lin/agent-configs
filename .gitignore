@@ -13,7 +13,6 @@ claude/.claude/shell-snapshots/
 claude/.claude/file-history/
 claude/.claude/settings.json
 claude/.claude/history.jsonl
-claude/.claude/skills/**/node_modules/
 
 # Work-specific Jsonnet configs (machine-specific)
 jsonnet/*_work*
