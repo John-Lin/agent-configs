@@ -1,7 +1,7 @@
 # agent-configs
 
 Personal configuration for AI coding agents (Claude Code, OpenCode, pi) and the
-Claude status line, managed with `make` and `GNU Stow`. Split out of my
+Claude status line, managed with `make` and a pinned skills CLI. Split out of my
 [dotfiles](https://github.com/John-Lin/dotfiles) so editor/shell/desktop config
 and agent config can evolve independently.
 
@@ -31,26 +31,24 @@ make sync-claude        # Claude Code config (CLAUDE.md→AGENTS.md, settings.js
 make sync-ccstatusline  # ccstatusline config
 make sync-opencode      # OpenCode agents + generated opencode.json + AGENTS.md
 make sync-pi            # pi canonical AGENTS.md + packages injection
-make sync-skills        # shared skills → ~/.agents/skills/<name>
+make sync-skills        # upstream skills → ~/.agents/skills/<name>
 
 make sync-agents-md-force  # regenerate canonical AGENTS.md only (after editing AGENTS.personal.md)
 make sync-claude-force
 make sync-opencode-force
 make sync-pi-force
-make sync-skills-force
 
 make test
 make clean
 ```
 
 - `make test` runs syntax checks, safety regression tests, and sync smoke tests.
-- `make clean` removes repo-managed symlinks and generated files while preserving
-  unmanaged local files.
+- `make clean` removes configuration managed by this project while preserving
+  unrelated local files.
 
 ## Repo Layout
 
 - `agents-md/` - shared, tool-neutral instruction source (canonical `AGENTS.md`)
-- `skills/` - shared, tool-neutral skills, stowed to `~/.agents/skills/<name>`
 - `claude/` - Claude Code config and local override templates
 - `ccstatusline/` - Claude status line config
 - `opencode/` - OpenCode agents
@@ -60,15 +58,17 @@ make clean
 
 ## Personal Overrides
 
-Personal/machine-specific files stay gitignored:
+Personal and work-specific inputs are not tracked by this repository:
 
 - `agents-md/AGENTS.personal.md` (merged into the canonical `~/.pi/agent/AGENTS.md`)
 - `claude/claude_settings.personal.json` (merged into `~/.claude/settings.json`)
-- `jsonnet/opencode_work.libsonnet` (work overlay, kept outside this repo)
+- `opencode_work.libsonnet` in the external directory selected by
+  `OPENCODE_WORK_CONFIG`
 
-Because these are gitignored, they live on one machine only. Copy them to each
-new machine yourself before running the sync targets — otherwise the sync
-falls back to base-only output and your personal overrides are silently dropped.
+The first two files are gitignored and must be copied to each new machine before
+running sync targets; without them, sync uses only the tracked base/template.
+Keep the OpenCode work overlay outside this repository and pass its directory via
+`OPENCODE_WORK_CONFIG` when running `make sync-opencode`.
 
 The shared instructions are generated once as the canonical
 `~/.pi/agent/AGENTS.md` (pi owns it). Claude Code and OpenCode point at it via
@@ -76,10 +76,14 @@ symlinks: `~/.claude/CLAUDE.md` and `~/.config/opencode/AGENTS.md`. Any of
 `make sync-claude` / `sync-opencode` / `sync-pi` regenerates the canonical file
 as needed.
 
-Shared skills follow the same tool-neutral idea: `make sync-skills` stows them to
-`~/.agents/skills/<name>`. OpenCode and pi read that path natively; Claude Code
-reaches them through `~/.claude/skills → ~/.agents/skills` (set up by
-`make sync-claude`). See `docs/ai.md`.
+Shared skills use `~/.agents/skills/<name>` as the universal location. `make
+sync-skills` installs them from their upstream repositories with the pinned
+`skills@1.5.19` CLI.
+OpenCode and pi read the universal path natively; the CLI creates one symlink per
+managed skill under `~/.claude/skills/` for Claude Code. See `docs/ai.md`.
+
+To add a skill, add another explicit `$(SKILLS_CLI) add ...` command to
+`sync-skills` and include its name in `clean-skills`.
 
 Migrating a machine that already had the old dotfiles installed? See
 `MIGRATION.md`.
@@ -92,10 +96,11 @@ Detailed setup:
 ## Requirements
 
 - macOS or Linux
-- Git, Make, GNU Stow
+- Git, Make, GNU Stow (for ccstatusline)
 - `jq`
 - `jsonnet` (for `make sync-opencode`)
-- Node.js / `bun` (Claude Code, OpenCode, pi runtimes)
+- Node.js (provides `npx` for the pinned skills CLI)
+- `bun` if required by the locally installed agent runtimes
 - Python 3 (used by `make check-syntax`)
 
 ## License

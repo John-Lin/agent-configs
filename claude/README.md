@@ -19,14 +19,16 @@ claude/
 └── claude_settings.personal.json.example # Template for the above
 ```
 
-Two shared sources are tool-neutral and live at the repo root, not under `claude/`:
-the instruction source (`agents-md/AGENTS.base.md`, `AGENTS.personal.md`) and the
-skills (`skills/`, stowed to `~/.agents/skills/`). See the top-level README and `docs/ai.md`.
+Two shared sources are tool-neutral and live outside `claude/`: the instruction
+source (`agents-md/AGENTS.base.md`, `AGENTS.personal.md`) and the skills installed
+into `~/.agents/skills/` by the pinned skills CLI. See the top-level README and
+`docs/ai.md`.
 
-`sync-claude` symlinks `agents/` into `~/.claude/` and points `~/.claude/skills`
-at the shared `~/.agents/skills/`. `~/.claude/CLAUDE.md` is a symlink to the
-canonical `~/.pi/agent/AGENTS.md`; `settings.json` is a generated file. Do not
-edit either directly — edit the sources and re-run `make sync-claude`.
+`sync-claude` symlinks `agents/` into `~/.claude/`. Its `sync-skills`
+dependency asks the skills CLI to create one symlink per managed skill under
+`~/.claude/skills/`. `~/.claude/CLAUDE.md` is a symlink to the canonical
+`~/.pi/agent/AGENTS.md`; `settings.json` is a generated file. Do not edit either
+directly — edit the sources and re-run `make sync-claude`.
 
 ## Personal Configuration
 
@@ -45,7 +47,7 @@ make sync-claude
 
 `sync-claude` concatenates `AGENTS.base.md` + `AGENTS.personal.md` → the canonical `~/.pi/agent/AGENTS.md`
 (which `~/.claude/CLAUDE.md` symlinks to). Personal content appends after the base, so your rules take precedence.
-If `~/.pi/agent/AGENTS.md` already exists with different contents, the sync stops instead of overwriting it — run `make sync-pi-force` to replace it.
+If `~/.pi/agent/AGENTS.md` already exists with different contents, the sync stops instead of overwriting it — run `make sync-agents-md-force` to regenerate only the canonical instructions.
 
 ### claude_settings.personal.json — settings overrides
 
@@ -107,9 +109,10 @@ files, `sync-claude` stops and asks you to move them away or run `make sync-clau
 |------------|-----------------------------------------|
 | `agents/`  | Subagent prompt files (`*.md`) — see source mapping below |
 
-Skills are no longer under `claude/`. They live in the repo-root `skills/` package
-(`*/SKILL.md`), are stowed to `~/.agents/skills/<name>` by `make sync-skills`, and
-reach Claude Code via `~/.claude/skills → ~/.agents/skills`.
+Skills are no longer stored in this repository. `make sync-skills` installs them
+from their upstream repositories with the pinned skills CLI into
+`~/.agents/skills/<name>` and creates matching per-skill links under
+`~/.claude/skills/<name>`.
 
 ### Subagent sources
 

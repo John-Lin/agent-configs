@@ -5,6 +5,7 @@ all: sync
 SHELL := /bin/bash
 
 REPO_ROOT := $(abspath $(CURDIR))
+SKILLS_CLI := npx --yes skills@1.5.19
 
 # Auto-detect work environment via OPENCODE_WORK_CONFIG env var (path to external config dir)
 OPENCODE_ENV := $(if $(OPENCODE_WORK_CONFIG),work,personal)
@@ -78,9 +79,12 @@ elif [ -e "$$target" ]; then \
 fi
 endef
 
-# Shared prerequisite
+# Shared prerequisites
 require-stow:
 	@command -v stow >/dev/null 2>&1 || { echo "❌ stow is not installed. Please install it first."; exit 1; }
+
+require-npx:
+	@command -v npx >/dev/null 2>&1 || { echo "❌ npx is not installed. Please install Node.js first."; exit 1; }
 
 # Install all configurations (removed automatic installation)
 sync:
@@ -89,7 +93,7 @@ sync:
 	@echo "  make sync-ccstatusline  - Install ccstatusline configuration"
 	@echo "  make sync-opencode      - Install OpenCode configuration (agents + opencode.json)"
 	@echo "  make sync-pi            - Install pi configuration (AGENTS.md + settings.json)"
-	@echo "  make sync-skills        - Install shared skills to ~/.agents/skills/"
+	@echo "  make sync-skills        - Install published skills to ~/.agents/skills/"
 
 # Generate the canonical instructions file at ~/.pi/agent/AGENTS.md.
 # pi owns this file; Claude Code and OpenCode symlink to it. Every sync target
@@ -136,17 +140,15 @@ sync-claude: sync-agents-md sync-skills
 	fi; \
 	$(call ensure_safe_symlink,$${HOME}/.claude/CLAUDE.md,$${HOME}/.pi/agent/AGENTS.md,sync-claude-force); \
 	$(call ensure_safe_symlink,$${HOME}/.claude/agents,$(REPO_ROOT)/claude/.claude/agents,sync-claude-force); \
-	$(call ensure_safe_symlink,$${HOME}/.claude/skills,$${HOME}/.agents/skills,sync-claude-force); \
 	mv "$$tmp_settings" "$${HOME}/.claude/settings.json"; \
 	ln -snf "$${HOME}/.pi/agent/AGENTS.md" "$${HOME}/.claude/CLAUDE.md"; \
-	ln -snf "$(REPO_ROOT)/claude/.claude/agents" "$${HOME}/.claude/agents"; \
-	ln -snf "$${HOME}/.agents/skills" "$${HOME}/.claude/skills"
+	ln -snf "$(REPO_ROOT)/claude/.claude/agents" "$${HOME}/.claude/agents"
 	@echo "✅ Claude Code configuration installed"
 
 sync-claude-force:
 	@echo "🤖 Installing Claude Code configuration (force)..."
 	@mkdir -p ~/.claude
-	@rm -rf ~/.claude/agents ~/.claude/skills
+	@rm -rf ~/.claude/agents
 	@rm -f ~/.claude/CLAUDE.md ~/.claude/settings.json
 	@$(MAKE) sync-claude
 
@@ -162,34 +164,27 @@ sync-ccstatusline: require-stow
 	stow -t ~ ccstatusline
 	@echo "✅ ccstatusline configuration installed"
 
-# Install shared skills as ~/.agents/skills/<name> (one symlink per skill).
-# Pre-creating ~/.agents/skills as a real dir makes stow link each skill instead
-# of folding the whole tree. OpenCode and pi read ~/.agents/skills natively;
-# Claude Code reaches them via ~/.claude/skills (see sync-claude).
-# omarchy is a Linux/omarchy system pointer (an absolute symlink stow can't manage,
-# so it is excluded via skills/.stow-local-ignore). Link it separately, only where
-# its target resolves — a no-op on machines without omarchy installed.
-define link_omarchy_skill
-omarchy_src="$$(readlink "$(REPO_ROOT)/skills/.agents/skills/omarchy" 2>/dev/null)"; \
-if [ -n "$$omarchy_src" ] && [ -e "$$omarchy_src" ]; then \
-	ln -snf "$$omarchy_src" "$${HOME}/.agents/skills/omarchy"; \
-	echo "  Linked omarchy skill"; \
-fi
-endef
-
-sync-skills: require-stow
+# Install published skills with the pinned skills CLI into the universal
+# ~/.agents/skills directory. OpenCode and pi read this path natively; the CLI
+# creates one symlink per managed skill under ~/.claude/skills for Claude Code.
+sync-skills: require-npx
 	@echo "🧩 Installing shared skills..."
 	@mkdir -p ~/.agents/skills
-	stow -t ~ skills
-	@$(call link_omarchy_skill)
-	@echo "✅ Skills installed to ~/.agents/skills/"
-
-sync-skills-force:
-	@echo "🧩 Installing shared skills (force)..."
-	@command -v stow >/dev/null 2>&1 || { echo "❌ stow is not installed. Please install it first."; exit 1; }
-	@mkdir -p ~/.agents/skills
-	stow -R -t ~ skills
-	@$(call link_omarchy_skill)
+	@if [ -L ~/.claude/skills ]; then \
+		current="$$(readlink ~/.claude/skills)"; \
+		if [ "$$current" = "$${HOME}/.agents/skills" ]; then \
+			rm -f ~/.claude/skills; \
+			echo "  Migrated Claude Code skills to per-skill links"; \
+		else \
+			echo "❌ ~/.claude/skills points to $$current"; \
+			echo "   Remove it manually before installing CLI-managed per-skill links"; \
+			exit 1; \
+		fi; \
+	fi
+	$(SKILLS_CLI) add cocoon-ai/architecture-diagram-generator --skill architecture-diagram --global --agent opencode --agent claude-code --yes
+	$(SKILLS_CLI) add upstash/context7 --skill find-docs --global --agent opencode --agent claude-code --yes
+	$(SKILLS_CLI) add obra/superpowers --skill test-driven-development --global --agent opencode --agent claude-code --yes
+	$(SKILLS_CLI) add mattpocock/skills --skill grill-me --skill grill-with-docs --skill handoff --global --agent opencode --agent claude-code --yes
 	@echo "✅ Skills installed to ~/.agents/skills/"
 
 # Install OpenCode configuration (agents + opencode.json from jsonnet)
@@ -268,12 +263,13 @@ sync-pi-force:
 # Remove all symlinks and generated files (with confirmation)
 clean:
 	@echo "⚠️  WARNING: This will remove all agent-config configurations!"
-	@echo "  - ~/.claude/ (CLAUDE.md, settings.json, agents, skills)"
+	@echo "  - ~/.claude/ (CLAUDE.md, settings.json, agents)"
 	@echo "  - ~/.pi/agent/AGENTS.md (canonical instructions)"
 	@echo "  - ~/.config/opencode/opencode.json"
 	@echo "  - ~/.config/opencode/agents"
 	@echo "  - ~/.config/opencode/AGENTS.md"
-	@echo "  - ~/.agents/skills/ (shared skills)"
+	@echo "  - ~/.agents/skills/<managed-skill> (canonical copies)"
+	@echo "  - ~/.claude/skills/<managed-skill> (CLI-managed links)"
 	@echo ""
 	@read -p "Are you sure? [y/N] " -n 1 -r; \
 	echo ""; \
@@ -304,7 +300,6 @@ clean-claude:
 	$(call remove_managed_file,$${HOME}/.claude/settings.json,$$tmp_settings)
 	@$(call remove_managed_path,$${HOME}/.claude/CLAUDE.md,$${HOME}/.pi/agent/AGENTS.md)
 	@$(call remove_managed_path,$${HOME}/.claude/agents,$(REPO_ROOT)/claude/.claude/agents)
-	@$(call remove_managed_path,$${HOME}/.claude/skills,$${HOME}/.agents/skills)
 	@echo "✅ Claude Code configuration removed"
 
 clean-opencode:
@@ -336,8 +331,11 @@ clean-pi:
 
 clean-skills:
 	@echo "🧹 Removing shared skills..."
-	@command -v stow >/dev/null 2>&1 && stow -D -t ~ skills || echo "  ⚠️  stow not found, skipping skill unlink"
-	@rm -f ~/.agents/skills/omarchy
+	@if command -v npx >/dev/null 2>&1; then \
+		$(SKILLS_CLI) remove architecture-diagram find-docs test-driven-development grill-me grill-with-docs handoff --global --agent opencode --agent universal --agent claude-code --yes; \
+	else \
+		echo "  ⚠️  npx not found, skipping published skill removal"; \
+	fi
 	@rmdir ~/.agents/skills ~/.agents 2>/dev/null || true
 	@echo "✅ Shared skills removed"
 
@@ -372,4 +370,4 @@ check-syntax:
 	done
 	@echo "✅ Syntax check passed"
 
-.PHONY: all require-stow clean clean-force clean-claude clean-skills clean-opencode clean-pi sync sync-agents-md sync-agents-md-force sync-claude sync-claude-force sync-ccstatusline sync-skills sync-skills-force sync-opencode sync-opencode-force sync-pi sync-pi-force test test-safety test-sync-smoke check-syntax
+.PHONY: all require-stow require-npx clean clean-force clean-claude clean-skills clean-opencode clean-pi sync sync-agents-md sync-agents-md-force sync-claude sync-claude-force sync-ccstatusline sync-skills sync-opencode sync-opencode-force sync-pi sync-pi-force test test-safety test-sync-smoke check-syntax

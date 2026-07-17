@@ -11,7 +11,8 @@ All three agents read one canonical instruction file, generated from
 
 Any of `make sync-claude` / `sync-opencode` / `sync-pi` regenerates the canonical
 file first, so it always exists before the symlinks are created. If the canonical
-file has drifted from the repo, the sync stops; run `make sync-pi-force` to replace it.
+file has drifted from the repo, the sync stops; run `make sync-agents-md-force` to
+regenerate only the canonical instructions.
 
 ## Claude Code
 
@@ -80,15 +81,15 @@ Tracked shared agents currently include:
 
 ## Skills
 
-Skills are tool-neutral and shared via one canonical location, the same way as the
-instructions. The source lives in the repo-root `skills/` package; `make sync-skills`
-stows each skill to `~/.agents/skills/<name>/SKILL.md`.
+Skills are tool-neutral and shared through the universal
+`~/.agents/skills/<name>` location. `make sync-skills` uses the pinned
+`skills@1.5.19` CLI to install every managed skill there.
 
 Discovery per tool:
 
-- **OpenCode** and **pi** read `~/.agents/skills/` natively — no symlink needed.
-- **Claude Code** reads only `~/.claude/skills/`, so `make sync-claude` points
-  `~/.claude/skills → ~/.agents/skills`.
+- **OpenCode** and **pi** read `~/.agents/skills/` natively.
+- **Claude Code** reads `~/.claude/skills/`; the skills CLI creates one symlink
+  there for each managed skill by targeting the `claude-code` agent.
 
 Install:
 
@@ -96,14 +97,12 @@ Install:
 make sync-skills
 ```
 
-Tracked shared skills:
+Skills installed by the pinned CLI:
 
-- `architecture-diagram` - standalone architecture diagrams as HTML/SVG
-- `find-docs` - Context7-powered documentation lookup
-- `gh-cli` - GitHub CLI workflow reference
-- `test-driven-development` - TDD workflow
-- `omarchy` - Linux desktop/window manager customization (a machine-local pointer;
-  linked only on machines where omarchy is installed)
+- `architecture-diagram` from `cocoon-ai/architecture-diagram-generator`
+- `find-docs` from `upstash/context7`
+- `test-driven-development` from `obra/superpowers`
+- `grill-me`, `grill-with-docs`, and `handoff` from `mattpocock/skills`
 
 ## MCP Servers
 

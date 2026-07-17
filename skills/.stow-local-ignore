@@ -1,3 +1,0 @@
-# omarchy is an absolute symlink to a Linux/omarchy system path that stow cannot
-# manage; sync-skills links it separately (only where its target resolves).
-^omarchy$
