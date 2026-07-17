@@ -76,9 +76,8 @@ as needed.
 
 Shared skills use `~/.agents/skills/<name>` as the universal location. `make
 sync-skills` installs them from skills.sh with the pinned `skills@1.5.19` CLI.
-OpenCode and pi read the universal path natively; Claude Code reaches it through
-`~/.claude/skills → ~/.agents/skills` (set up by `make sync-claude`). See
-`docs/ai.md`.
+OpenCode and pi read the universal path natively; the CLI creates one symlink per
+managed skill under `~/.claude/skills/` for Claude Code. See `docs/ai.md`.
 
 To add a skill, add another explicit `$(SKILLS_CLI) add ...` command to
 `sync-skills` and include its name in `clean-skills`.

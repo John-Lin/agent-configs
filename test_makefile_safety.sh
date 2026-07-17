@@ -50,6 +50,21 @@ assert_symlink_target() {
 	fi
 }
 
+assert_symlink_resolves_to() {
+	local path="$1"
+	local expected="$2"
+
+	if [ ! -L "$path" ]; then
+		printf 'Expected symlink: %s\n' "$path" >&2
+		exit 1
+	fi
+
+	if [ "$(realpath "$path")" != "$(realpath "$expected")" ]; then
+		printf 'Expected %s to resolve to %s\n' "$path" "$expected" >&2
+		exit 1
+	fi
+}
+
 assert_make_fails() {
 	local home_dir="$1"
 	shift
@@ -127,6 +142,22 @@ test_clean_force_preserves_unmanaged_opencode_directory() {
 	assert_contains "$home_dir/.config/opencode/agents/local.txt" 'keep me'
 }
 
+test_sync_skills_preserves_unmanaged_claude_skills_symlink() {
+	local home_dir custom_skills
+	home_dir=$(mktemp -d)
+	trap '[ -n "${home_dir-}" ] && rm -rf "$home_dir"' RETURN
+	custom_skills="$home_dir/custom-skills"
+
+	mkdir -p "$home_dir/.claude" "$custom_skills"
+	printf 'keep me\n' >"$custom_skills/local.txt"
+	ln -s "$custom_skills" "$home_dir/.claude/skills"
+
+	assert_make_fails "$home_dir" sync-skills
+	assert_symlink_target "$home_dir/.claude/skills" "$custom_skills"
+	assert_file_exists "$custom_skills/local.txt"
+	assert_contains "$custom_skills/local.txt" 'keep me'
+}
+
 test_sync_claude_preserves_existing_generated_files() {
 	local home_dir
 	home_dir=$(mktemp -d)
@@ -151,7 +182,7 @@ test_sync_claude_force_overwrites_generated_files() {
 
 	HOME="$home_dir" make sync-claude-force >"$TEST_OUTPUT" 2>&1
 	assert_symlink_target "$home_dir/.claude/agents" "$REPO_ROOT/claude/.claude/agents"
-	assert_symlink_target "$home_dir/.claude/skills" "$home_dir/.agents/skills"
+	assert_symlink_resolves_to "$home_dir/.claude/skills/find-docs" "$home_dir/.agents/skills/find-docs"
 	assert_symlink_target "$home_dir/.claude/CLAUDE.md" "$home_dir/.pi/agent/AGENTS.md"
 	assert_contains "$home_dir/.claude/CLAUDE.md" "You are an experienced, pragmatic software engineer."
 }
@@ -243,6 +274,7 @@ main() {
 	test_sync_opencode_force_overwrites_existing_config_json
 	test_sync_opencode_force_replaces_existing_directory
 	test_clean_force_preserves_unmanaged_opencode_directory
+	test_sync_skills_preserves_unmanaged_claude_skills_symlink
 	test_sync_claude_preserves_existing_generated_files
 	test_sync_claude_force_overwrites_generated_files
 	test_sync_agents_md_preserves_existing_canonical

@@ -29,7 +29,7 @@ assert_symlink_resolves_to() {
 		exit 1
 	fi
 
-	if [ "$(realpath "$path")" != "$expected" ]; then
+	if [ "$(realpath "$path")" != "$(realpath "$expected")" ]; then
 		printf 'Expected %s to resolve to %s\n' "$path" "$expected" >&2
 		exit 1
 	fi
@@ -100,6 +100,8 @@ main() {
 	# opencode reads instructions from a global AGENTS.md → canonical pi file
 	assert_symlink_target "$home_dir/.config/opencode/AGENTS.md" "$home_dir/.pi/agent/AGENTS.md"
 
+	mkdir -p "$home_dir/.agents/skills" "$home_dir/.claude"
+	ln -s "$home_dir/.agents/skills" "$home_dir/.claude/skills"
 	run_make "$home_dir" sync-claude
 	# Published skills are installed by the pinned skills CLI into the universal directory.
 	assert_exists "$home_dir/.agents/skills/architecture-diagram/SKILL.md"
@@ -114,8 +116,8 @@ main() {
 	assert_file_contains "$home_dir/.claude/CLAUDE.md" 'You are an experienced, pragmatic software engineer.'
 	assert_exists "$home_dir/.claude/settings.json"
 	assert_symlink_resolves_to "$home_dir/.claude/agents" "$REPO_ROOT/claude/.claude/agents"
-	# Claude reaches skills via ~/.claude/skills -> ~/.agents/skills
-	assert_symlink_target "$home_dir/.claude/skills" "$home_dir/.agents/skills"
+	# The skills CLI links each managed skill into Claude Code's skill directory.
+	assert_symlink_resolves_to "$home_dir/.claude/skills/find-docs" "$home_dir/.agents/skills/find-docs"
 	assert_exists "$home_dir/.claude/skills/find-docs/SKILL.md"
 
 	run_make "$home_dir" sync-pi

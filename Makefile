@@ -140,17 +140,15 @@ sync-claude: sync-agents-md sync-skills
 	fi; \
 	$(call ensure_safe_symlink,$${HOME}/.claude/CLAUDE.md,$${HOME}/.pi/agent/AGENTS.md,sync-claude-force); \
 	$(call ensure_safe_symlink,$${HOME}/.claude/agents,$(REPO_ROOT)/claude/.claude/agents,sync-claude-force); \
-	$(call ensure_safe_symlink,$${HOME}/.claude/skills,$${HOME}/.agents/skills,sync-claude-force); \
 	mv "$$tmp_settings" "$${HOME}/.claude/settings.json"; \
 	ln -snf "$${HOME}/.pi/agent/AGENTS.md" "$${HOME}/.claude/CLAUDE.md"; \
-	ln -snf "$(REPO_ROOT)/claude/.claude/agents" "$${HOME}/.claude/agents"; \
-	ln -snf "$${HOME}/.agents/skills" "$${HOME}/.claude/skills"
+	ln -snf "$(REPO_ROOT)/claude/.claude/agents" "$${HOME}/.claude/agents"
 	@echo "✅ Claude Code configuration installed"
 
 sync-claude-force:
 	@echo "🤖 Installing Claude Code configuration (force)..."
 	@mkdir -p ~/.claude
-	@rm -rf ~/.claude/agents ~/.claude/skills
+	@rm -rf ~/.claude/agents
 	@rm -f ~/.claude/CLAUDE.md ~/.claude/settings.json
 	@$(MAKE) sync-claude
 
@@ -167,14 +165,25 @@ sync-ccstatusline: require-stow
 	@echo "✅ ccstatusline configuration installed"
 
 # Install published skills with the pinned skills CLI into the universal
-# ~/.agents/skills directory. OpenCode and pi read this path natively; Claude Code
-# reaches it via ~/.claude/skills (see sync-claude).
+# ~/.agents/skills directory. OpenCode and pi read this path natively; the CLI
+# creates one symlink per managed skill under ~/.claude/skills for Claude Code.
 sync-skills: require-npx
 	@echo "🧩 Installing shared skills..."
 	@mkdir -p ~/.agents/skills
-	$(SKILLS_CLI) add cocoon-ai/architecture-diagram-generator --skill architecture-diagram --global --agent opencode --yes
-	$(SKILLS_CLI) add upstash/context7 --skill find-docs --global --agent opencode --yes
-	$(SKILLS_CLI) add obra/superpowers --skill test-driven-development --global --agent opencode --yes
+	@if [ -L ~/.claude/skills ]; then \
+		current="$$(readlink ~/.claude/skills)"; \
+		if [ "$$current" = "$${HOME}/.agents/skills" ]; then \
+			rm -f ~/.claude/skills; \
+			echo "  Migrated Claude Code skills to per-skill links"; \
+		else \
+			echo "❌ ~/.claude/skills points to $$current"; \
+			echo "   Remove it manually before installing CLI-managed per-skill links"; \
+			exit 1; \
+		fi; \
+	fi
+	$(SKILLS_CLI) add cocoon-ai/architecture-diagram-generator --skill architecture-diagram --global --agent opencode --agent claude-code --yes
+	$(SKILLS_CLI) add upstash/context7 --skill find-docs --global --agent opencode --agent claude-code --yes
+	$(SKILLS_CLI) add obra/superpowers --skill test-driven-development --global --agent opencode --agent claude-code --yes
 	@echo "✅ Skills installed to ~/.agents/skills/"
 
 # Install OpenCode configuration (agents + opencode.json from jsonnet)
@@ -253,7 +262,7 @@ sync-pi-force:
 # Remove all symlinks and generated files (with confirmation)
 clean:
 	@echo "⚠️  WARNING: This will remove all agent-config configurations!"
-	@echo "  - ~/.claude/ (CLAUDE.md, settings.json, agents, skills)"
+	@echo "  - ~/.claude/ (CLAUDE.md, settings.json, agents)"
 	@echo "  - ~/.pi/agent/AGENTS.md (canonical instructions)"
 	@echo "  - ~/.config/opencode/opencode.json"
 	@echo "  - ~/.config/opencode/agents"
@@ -289,7 +298,6 @@ clean-claude:
 	$(call remove_managed_file,$${HOME}/.claude/settings.json,$$tmp_settings)
 	@$(call remove_managed_path,$${HOME}/.claude/CLAUDE.md,$${HOME}/.pi/agent/AGENTS.md)
 	@$(call remove_managed_path,$${HOME}/.claude/agents,$(REPO_ROOT)/claude/.claude/agents)
-	@$(call remove_managed_path,$${HOME}/.claude/skills,$${HOME}/.agents/skills)
 	@echo "✅ Claude Code configuration removed"
 
 clean-opencode:

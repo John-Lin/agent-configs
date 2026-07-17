@@ -24,10 +24,11 @@ source (`agents-md/AGENTS.base.md`, `AGENTS.personal.md`) and the skills install
 into `~/.agents/skills/` by the pinned skills CLI. See the top-level README and
 `docs/ai.md`.
 
-`sync-claude` symlinks `agents/` into `~/.claude/` and points `~/.claude/skills`
-at the shared `~/.agents/skills/`. `~/.claude/CLAUDE.md` is a symlink to the
-canonical `~/.pi/agent/AGENTS.md`; `settings.json` is a generated file. Do not
-edit either directly — edit the sources and re-run `make sync-claude`.
+`sync-claude` symlinks `agents/` into `~/.claude/`. Its `sync-skills`
+dependency asks the skills CLI to create one symlink per managed skill under
+`~/.claude/skills/`. `~/.claude/CLAUDE.md` is a symlink to the canonical
+`~/.pi/agent/AGENTS.md`; `settings.json` is a generated file. Do not edit either
+directly — edit the sources and re-run `make sync-claude`.
 
 ## Personal Configuration
 
@@ -110,8 +111,8 @@ files, `sync-claude` stops and asks you to move them away or run `make sync-clau
 
 Skills are no longer stored in this repository. `make sync-skills` installs them
 from their upstream repositories with the pinned skills CLI into
-`~/.agents/skills/<name>`. They reach Claude Code via
-`~/.claude/skills → ~/.agents/skills`.
+`~/.agents/skills/<name>` and creates matching per-skill links under
+`~/.claude/skills/<name>`.
 
 ### Subagent sources
 

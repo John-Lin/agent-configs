@@ -86,9 +86,9 @@ Skills are tool-neutral and shared through the universal
 
 Discovery per tool:
 
-- **OpenCode** and **pi** read `~/.agents/skills/` natively — no symlink needed.
-- **Claude Code** reads only `~/.claude/skills/`, so `make sync-claude` points
-  `~/.claude/skills → ~/.agents/skills`.
+- **OpenCode** and **pi** read `~/.agents/skills/` natively.
+- **Claude Code** reads `~/.claude/skills/`; the skills CLI creates one symlink
+  there for each managed skill by targeting the `claude-code` agent.
 
 Install:
 

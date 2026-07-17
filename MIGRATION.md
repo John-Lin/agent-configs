@@ -14,9 +14,12 @@ Only **symlinks** break — they pointed into the old `dotfiles/` tree:
 | Path | Old target | New target |
 |------|------------|------------|
 | `~/.claude/agents` | `dotfiles/claude/.claude/agents` | `agent-configs/claude/.claude/agents` |
-| `~/.claude/skills` | `dotfiles/claude/.claude/skills` | `agent-configs/claude/.claude/skills` |
 | `~/.config/opencode/agents` | `dotfiles/opencode/agents` | `agent-configs/opencode/agents` |
 | `~/.config/ccstatusline/settings.json` | `dotfiles/ccstatusline/...` | `agent-configs/ccstatusline/...` |
+
+The old `~/.claude/skills` symlink is not re-pointed into this repository. Remove
+it and run `make sync-skills`; the skills CLI replaces it with one symlink per
+managed skill.
 
 These are **not** affected by the repo split and need no migration:
 
@@ -49,16 +52,20 @@ Copy your gitignored personal files onto the new machine if you use them:
 
 ## Option A — Re-point the symlinks (minimal, no regeneration)
 
-This is the lowest-risk path: it only swaps the four symlinks and never touches
-your generated `CLAUDE.md` / `settings.json` / `opencode.json`. Use it if you've
-hand-tuned any of those files.
+This is the lowest-risk path: it re-points the remaining repo-owned symlinks,
+installs skills through the pinned CLI, and never touches your generated
+`CLAUDE.md` / `settings.json` / `opencode.json`. Use it if you've hand-tuned any
+of those files.
 
 ```bash
 AGENT_CONFIGS=~/workspace/agent-configs   # adjust to where you cloned it
 
 ln -snf "$AGENT_CONFIGS/claude/.claude/agents"  ~/.claude/agents
-ln -snf "$AGENT_CONFIGS/claude/.claude/skills"  ~/.claude/skills
 ln -snf "$AGENT_CONFIGS/opencode/agents"        ~/.config/opencode/agents
+
+# Replace the old whole-directory skills link with CLI-managed per-skill links.
+rm -f ~/.claude/skills
+( cd "$AGENT_CONFIGS" && make sync-skills )
 
 # ccstatusline is stow-managed; re-create via stow so the link matches the repo
 rm -f ~/.config/ccstatusline/settings.json
@@ -77,7 +84,7 @@ cd ~/workspace/agent-configs
 # Remove the stale symlinks first (make refuses to clobber unmanaged symlinks)
 rm -f ~/.claude/agents ~/.claude/skills ~/.config/opencode/agents ~/.config/ccstatusline/settings.json
 
-make sync-claude         # ~/.claude/{agents,skills} + regenerate CLAUDE.md, settings.json
+make sync-claude         # ~/.claude/agents + CLI-managed skills + regenerate CLAUDE.md, settings.json
 make sync-ccstatusline   # ~/.config/ccstatusline/settings.json
 make sync-opencode       # ~/.config/opencode/agents + regenerate opencode.json
 make sync-pi             # regenerate canonical ~/.pi/agent/AGENTS.md + inject packages
@@ -95,14 +102,16 @@ make sync-pi             # regenerate canonical ~/.pi/agent/AGENTS.md + inject p
 ## Verify
 
 ```bash
-for p in ~/.claude/agents ~/.claude/skills \
-         ~/.config/opencode/agents ~/.config/ccstatusline/settings.json; do
+for p in ~/.claude/agents ~/.config/opencode/agents \
+         ~/.config/ccstatusline/settings.json; do
   printf '%-42s -> %s  [%s]\n' "$p" "$(readlink "$p")" \
     "$([ -e "$p" ] && echo OK || echo DANGLING)"
 done
+find ~/.claude/skills -mindepth 1 -maxdepth 1 -type l -print
 ```
 
-Every line should read `OK` and point into `agent-configs/`.
+The repo-owned symlinks should read `OK` and point into `agent-configs/`. Claude's
+skill directory should contain one CLI-managed link per installed skill.
 
 ## Optional cleanup
 
@@ -130,7 +139,7 @@ to a tool-neutral home:
 | `~/.claude/CLAUDE.md` | real generated file | symlink → `~/.pi/agent/AGENTS.md` |
 | `~/.pi/agent/AGENTS.md` | symlink → `~/.claude/CLAUDE.md` | the canonical real file |
 | `~/.config/opencode/AGENTS.md` | absent (used the `~/.claude/CLAUDE.md` fallback) | symlink → `~/.pi/agent/AGENTS.md` |
-| `~/.claude/skills` | symlink → `claude/.claude/skills` | symlink → `~/.agents/skills` |
+| `~/.claude/skills/<name>` | reached through one repo-owned directory symlink | per-skill symlink → `~/.agents/skills/<name>` |
 | `~/.agents/skills/<name>` | absent | skills installed from upstream by `skills` (read natively by OpenCode + pi) |
 
 The **sources** also moved in the repo: instructions from `claude/.claude/CLAUDE.base.md`
@@ -188,13 +197,10 @@ fi
 mkdir -p ~/.config/opencode
 ln -snf ~/.pi/agent/AGENTS.md ~/.config/opencode/AGENTS.md
 
-# 5. Move skills to the shared ~/.agents/skills and re-point Claude's skills dir.
-#    The old ~/.claude/skills pointed into claude/.claude/skills, which moved, so
-#    that symlink now dangles. (OpenCode and pi read ~/.agents/skills natively — no
-#    symlink needed for them.)
-rm -f ~/.claude/skills            # old whole-dir symlink, now dangling (a symlink, not a real dir)
-make sync-skills                  # install skills from their upstream repositories
-ln -snf ~/.agents/skills ~/.claude/skills
+# 5. Replace the old whole-directory Claude skills link. OpenCode and pi read
+#    ~/.agents/skills natively; the skills CLI creates Claude's per-skill links.
+rm -f ~/.claude/skills
+make sync-skills                  # install upstream skills and Claude per-skill links
 ```
 
 ## Recovering personal content
@@ -244,15 +250,17 @@ matches your current live file. A mismatch has two causes:
 ```bash
 printf '%-30s ' '~/.pi/agent/AGENTS.md'
 [ -L ~/.pi/agent/AGENTS.md ] && echo 'symlink ❌ (want real file)' || echo 'real file ✅'
-for p in ~/.claude/CLAUDE.md ~/.config/opencode/AGENTS.md ~/.claude/skills; do
+for p in ~/.claude/CLAUDE.md ~/.config/opencode/AGENTS.md; do
   printf '%-30s -> %s  [%s]\n' "$p" "$(readlink "$p")" \
     "$([ -e "$p" ] && echo OK || echo DANGLING)"
 done
-ls ~/.agents/skills    # skills installed from their upstream repositories
+ls ~/.agents/skills
+find ~/.claude/skills -mindepth 1 -maxdepth 1 -type l -print
 ```
 
-The instruction symlinks should read `OK` and point at the real `~/.pi/agent/AGENTS.md`,
-and `~/.claude/skills` should point at `~/.agents/skills`.
+The instruction symlinks should read `OK` and point at the real
+`~/.pi/agent/AGENTS.md`. Each managed skill should have a corresponding symlink
+under `~/.claude/skills/`.
 
 ## Updating personal instructions afterward
 
