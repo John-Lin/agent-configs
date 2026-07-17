@@ -107,9 +107,13 @@ main() {
 	assert_exists "$home_dir/.agents/skills/architecture-diagram/SKILL.md"
 	assert_exists "$home_dir/.agents/skills/find-docs/SKILL.md"
 	assert_exists "$home_dir/.agents/skills/test-driven-development/SKILL.md"
+	assert_exists "$home_dir/.agents/skills/grill-me/SKILL.md"
+	assert_exists "$home_dir/.agents/skills/grill-with-docs/SKILL.md"
+	assert_exists "$home_dir/.agents/skills/handoff/SKILL.md"
 	assert_file_contains "$home_dir/.agents/.skill-lock.json" 'cocoon-ai/architecture-diagram-generator'
 	assert_file_contains "$home_dir/.agents/.skill-lock.json" 'upstash/context7'
 	assert_file_contains "$home_dir/.agents/.skill-lock.json" 'obra/superpowers'
+	assert_file_contains "$home_dir/.agents/.skill-lock.json" 'mattpocock/skills'
 
 	# CLAUDE.md is now a symlink to the canonical pi AGENTS.md
 	assert_symlink_target "$home_dir/.claude/CLAUDE.md" "$home_dir/.pi/agent/AGENTS.md"
@@ -118,6 +122,9 @@ main() {
 	assert_symlink_resolves_to "$home_dir/.claude/agents" "$REPO_ROOT/claude/.claude/agents"
 	# The skills CLI links each managed skill into Claude Code's skill directory.
 	assert_symlink_resolves_to "$home_dir/.claude/skills/find-docs" "$home_dir/.agents/skills/find-docs"
+	assert_symlink_resolves_to "$home_dir/.claude/skills/grill-me" "$home_dir/.agents/skills/grill-me"
+	assert_symlink_resolves_to "$home_dir/.claude/skills/grill-with-docs" "$home_dir/.agents/skills/grill-with-docs"
+	assert_symlink_resolves_to "$home_dir/.claude/skills/handoff" "$home_dir/.agents/skills/handoff"
 	assert_exists "$home_dir/.claude/skills/find-docs/SKILL.md"
 
 	run_make "$home_dir" sync-pi
