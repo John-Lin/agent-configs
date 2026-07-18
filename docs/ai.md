@@ -101,12 +101,8 @@ Install:
 make sync-skills
 ```
 
-Skills installed by the pinned CLI:
-
-- `architecture-diagram` from `cocoon-ai/architecture-diagram-generator`
-- `find-docs` from `upstash/context7`
-- `test-driven-development` from `obra/superpowers`
-- `grill-me`, `grill-with-docs`, `handoff`, and `writing-great-skills` from `mattpocock/skills`
+The installed skills are declared in `skills.yaml` at the repo root — edit that
+file to add or remove a skill, then rerun `make sync-skills`.
 
 ## MCP Servers
 

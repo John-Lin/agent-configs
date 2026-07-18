@@ -23,6 +23,12 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y stow jq jsonnet
+        # mikefarah yq v4 is preinstalled on ubuntu-latest; apt's "yq" is an
+        # incompatible tool, so install the official binary only if missing.
+        if ! command -v yq >/dev/null 2>&1; then
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+        fi
 
     - name: Run syntax check
       run: make check-syntax
