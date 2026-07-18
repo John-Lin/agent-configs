@@ -184,7 +184,7 @@ sync-skills: require-npx
 	$(SKILLS_CLI) add cocoon-ai/architecture-diagram-generator --skill architecture-diagram --global --agent opencode --agent claude-code --yes
 	$(SKILLS_CLI) add upstash/context7 --skill find-docs --global --agent opencode --agent claude-code --yes
 	$(SKILLS_CLI) add obra/superpowers --skill test-driven-development --global --agent opencode --agent claude-code --yes
-	$(SKILLS_CLI) add mattpocock/skills --skill grill-me --skill grill-with-docs --skill handoff --global --agent opencode --agent claude-code --yes
+	$(SKILLS_CLI) add mattpocock/skills --skill grill-me --skill grill-with-docs --skill handoff --skill writing-great-skills --global --agent opencode --agent claude-code --yes
 	@echo "✅ Skills installed to ~/.agents/skills/"
 
 # Install OpenCode configuration (agents + opencode.json from jsonnet)
@@ -332,7 +332,7 @@ clean-pi:
 clean-skills:
 	@echo "🧹 Removing shared skills..."
 	@if command -v npx >/dev/null 2>&1; then \
-		$(SKILLS_CLI) remove architecture-diagram find-docs test-driven-development grill-me grill-with-docs handoff --global --agent opencode --agent universal --agent claude-code --yes; \
+		$(SKILLS_CLI) remove architecture-diagram find-docs test-driven-development grill-me grill-with-docs handoff writing-great-skills --global --agent opencode --agent universal --agent claude-code --yes; \
 	else \
 		echo "  ⚠️  npx not found, skipping published skill removal"; \
 	fi

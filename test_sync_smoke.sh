@@ -110,6 +110,7 @@ main() {
 	assert_exists "$home_dir/.agents/skills/grill-me/SKILL.md"
 	assert_exists "$home_dir/.agents/skills/grill-with-docs/SKILL.md"
 	assert_exists "$home_dir/.agents/skills/handoff/SKILL.md"
+	assert_exists "$home_dir/.agents/skills/writing-great-skills/SKILL.md"
 	assert_file_contains "$home_dir/.agents/.skill-lock.json" 'cocoon-ai/architecture-diagram-generator'
 	assert_file_contains "$home_dir/.agents/.skill-lock.json" 'upstash/context7'
 	assert_file_contains "$home_dir/.agents/.skill-lock.json" 'obra/superpowers'
@@ -125,6 +126,7 @@ main() {
 	assert_symlink_resolves_to "$home_dir/.claude/skills/grill-me" "$home_dir/.agents/skills/grill-me"
 	assert_symlink_resolves_to "$home_dir/.claude/skills/grill-with-docs" "$home_dir/.agents/skills/grill-with-docs"
 	assert_symlink_resolves_to "$home_dir/.claude/skills/handoff" "$home_dir/.agents/skills/handoff"
+	assert_symlink_resolves_to "$home_dir/.claude/skills/writing-great-skills" "$home_dir/.agents/skills/writing-great-skills"
 	assert_exists "$home_dir/.claude/skills/find-docs/SKILL.md"
 
 	run_make "$home_dir" sync-pi
