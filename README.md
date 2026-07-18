@@ -82,8 +82,8 @@ sync-skills` installs them from their upstream repositories with the pinned
 OpenCode and pi read the universal path natively; the CLI creates one symlink per
 managed skill under `~/.claude/skills/` for Claude Code. See `docs/ai.md`.
 
-To add a skill, add another explicit `$(SKILLS_CLI) add ...` command to
-`sync-skills` and include its name in `clean-skills`.
+To add a skill, add it to `skills.yaml` (repo → skill names) and rerun `make
+sync-skills`. Install, removal, and the smoke test all read that manifest.
 
 Migrating a machine that already had the old dotfiles installed? See
 `MIGRATION.md`.
@@ -99,6 +99,7 @@ Detailed setup:
 - Git, Make, GNU Stow (for ccstatusline)
 - `jq`
 - `jsonnet` (for `make sync-opencode`)
+- `yq` (mikefarah v4, `brew install yq` — reads `skills.yaml`)
 - Node.js (provides `npx` for the pinned skills CLI)
 - `bun` if required by the locally installed agent runtimes
 - Python 3 (used by `make check-syntax`)

@@ -7,6 +7,14 @@ SHELL := /bin/bash
 REPO_ROOT := $(abspath $(CURDIR))
 SKILLS_CLI := npx --yes skills@1.5.19
 
+# skills.yaml is the single source of truth for managed skills; the smoke test
+# derives its assertions from the same file.
+SKILLS_MANIFEST := $(REPO_ROOT)/skills.yaml
+# Print the manifest as lines of "<repo> <skill> [<skill>...]"
+SKILLS_MANIFEST_ENTRIES := yq -r 'to_entries[] | .key + " " + (.value | join(" "))' "$(SKILLS_MANIFEST)"
+# Print every managed skill name on one line
+SKILLS_MANIFEST_NAMES := yq -r '[.[][]] | join(" ")' "$(SKILLS_MANIFEST)"
+
 # Auto-detect work environment via OPENCODE_WORK_CONFIG env var (path to external config dir)
 OPENCODE_ENV := $(if $(OPENCODE_WORK_CONFIG),work,personal)
 OPENCODE_JPATH := $(if $(OPENCODE_WORK_CONFIG),-J $(OPENCODE_WORK_CONFIG) -J $(REPO_ROOT)/jsonnet,)
@@ -85,6 +93,10 @@ require-stow:
 
 require-npx:
 	@command -v npx >/dev/null 2>&1 || { echo "❌ npx is not installed. Please install Node.js first."; exit 1; }
+
+# mikefarah yq v4 (brew install yq); Ubuntu's apt "yq" is an incompatible tool.
+require-yq:
+	@command -v yq >/dev/null 2>&1 || { echo "❌ yq is not installed (brew install yq). Required to read skills.yaml."; exit 1; }
 
 # Install all configurations (removed automatic installation)
 sync:
@@ -167,7 +179,7 @@ sync-ccstatusline: require-stow
 # Install published skills with the pinned skills CLI into the universal
 # ~/.agents/skills directory. OpenCode and pi read this path natively; the CLI
 # creates one symlink per managed skill under ~/.claude/skills for Claude Code.
-sync-skills: require-npx
+sync-skills: require-npx require-yq
 	@echo "🧩 Installing shared skills..."
 	@mkdir -p ~/.agents/skills
 	@if [ -L ~/.claude/skills ]; then \
@@ -181,10 +193,14 @@ sync-skills: require-npx
 			exit 1; \
 		fi; \
 	fi
-	$(SKILLS_CLI) add cocoon-ai/architecture-diagram-generator --skill architecture-diagram --global --agent opencode --agent claude-code --yes
-	$(SKILLS_CLI) add upstash/context7 --skill find-docs --global --agent opencode --agent claude-code --yes
-	$(SKILLS_CLI) add obra/superpowers --skill test-driven-development --global --agent opencode --agent claude-code --yes
-	$(SKILLS_CLI) add mattpocock/skills --skill grill-me --skill grill-with-docs --skill handoff --global --agent opencode --agent claude-code --yes
+	@set -e; \
+	entries="$$($(SKILLS_MANIFEST_ENTRIES))"; \
+	while read -r repo skills; do \
+		echo "  Installing from $$repo: $$skills"; \
+		skill_args=""; \
+		for skill in $$skills; do skill_args="$$skill_args --skill $$skill"; done; \
+		$(SKILLS_CLI) add "$$repo" $$skill_args --global --agent opencode --agent claude-code --yes </dev/null; \
+	done <<< "$$entries"
 	@echo "✅ Skills installed to ~/.agents/skills/"
 
 # Install OpenCode configuration (agents + opencode.json from jsonnet)
@@ -329,10 +345,12 @@ clean-pi:
 	@echo "  (settings.json left untouched — it is your personal file)"
 	@echo "✅ pi configuration removed"
 
-clean-skills:
+clean-skills: require-yq
 	@echo "🧹 Removing shared skills..."
 	@if command -v npx >/dev/null 2>&1; then \
-		$(SKILLS_CLI) remove architecture-diagram find-docs test-driven-development grill-me grill-with-docs handoff --global --agent opencode --agent universal --agent claude-code --yes; \
+		set -e; \
+		skill_names="$$($(SKILLS_MANIFEST_NAMES))"; \
+		$(SKILLS_CLI) remove $$skill_names --global --agent opencode --agent universal --agent claude-code --yes; \
 	else \
 		echo "  ⚠️  npx not found, skipping published skill removal"; \
 	fi
@@ -368,6 +386,13 @@ check-syntax:
 			python3 -m json.tool "$$file" >/dev/null || { echo "❌ Invalid JSON in $$file"; exit 1; }; \
 		fi; \
 	done
+	@echo "Checking YAML files..."
+	@if command -v yq >/dev/null 2>&1; then \
+		echo "  Checking skills.yaml"; \
+		yq '.' skills.yaml >/dev/null || { echo "❌ Invalid YAML in skills.yaml"; exit 1; }; \
+	else \
+		echo "  ⚠️  yq not found, skipping YAML checks"; \
+	fi
 	@echo "✅ Syntax check passed"
 
-.PHONY: all require-stow require-npx clean clean-force clean-claude clean-skills clean-opencode clean-pi sync sync-agents-md sync-agents-md-force sync-claude sync-claude-force sync-ccstatusline sync-skills sync-opencode sync-opencode-force sync-pi sync-pi-force test test-safety test-sync-smoke check-syntax
+.PHONY: all require-stow require-npx require-yq clean clean-force clean-claude clean-skills clean-opencode clean-pi sync sync-agents-md sync-agents-md-force sync-claude sync-claude-force sync-ccstatusline sync-skills sync-opencode sync-opencode-force sync-pi sync-pi-force test test-safety test-sync-smoke check-syntax

@@ -77,8 +77,14 @@ run_make() {
 	fi
 }
 
+# Print skills.yaml as lines of "<repo> <skill> [<skill>...]", mirroring the
+# Makefile's SKILLS_MANIFEST_ENTRIES so assertions track the manifest.
+manifest_entries() {
+	yq -r 'to_entries[] | .key + " " + (.value | join(" "))' "$REPO_ROOT/skills.yaml"
+}
+
 main() {
-	local home_dir test_output
+	local home_dir test_output skill_entries repo skills skill
 	home_dir=$(mktemp -d)
 	test_output=$(mktemp /tmp/sync-smoke.out.XXXXXX)
 	CLEANUP_HOME="$home_dir"
@@ -103,17 +109,19 @@ main() {
 	mkdir -p "$home_dir/.agents/skills" "$home_dir/.claude"
 	ln -s "$home_dir/.agents/skills" "$home_dir/.claude/skills"
 	run_make "$home_dir" sync-claude
-	# Published skills are installed by the pinned skills CLI into the universal directory.
-	assert_exists "$home_dir/.agents/skills/architecture-diagram/SKILL.md"
-	assert_exists "$home_dir/.agents/skills/find-docs/SKILL.md"
-	assert_exists "$home_dir/.agents/skills/test-driven-development/SKILL.md"
-	assert_exists "$home_dir/.agents/skills/grill-me/SKILL.md"
-	assert_exists "$home_dir/.agents/skills/grill-with-docs/SKILL.md"
-	assert_exists "$home_dir/.agents/skills/handoff/SKILL.md"
-	assert_file_contains "$home_dir/.agents/.skill-lock.json" 'cocoon-ai/architecture-diagram-generator'
-	assert_file_contains "$home_dir/.agents/.skill-lock.json" 'upstash/context7'
-	assert_file_contains "$home_dir/.agents/.skill-lock.json" 'obra/superpowers'
-	assert_file_contains "$home_dir/.agents/.skill-lock.json" 'mattpocock/skills'
+	# Published skills are installed by the pinned skills CLI into the universal
+	# directory. Every skill listed in skills.yaml must be present.
+	skill_entries="$(manifest_entries)"
+	if [ -z "$skill_entries" ]; then
+		printf 'skills.yaml produced no entries\n' >&2
+		exit 1
+	fi
+	while read -r repo skills; do
+		assert_file_contains "$home_dir/.agents/.skill-lock.json" "$repo"
+		for skill in $skills; do
+			assert_exists "$home_dir/.agents/skills/$skill/SKILL.md"
+		done
+	done <<< "$skill_entries"
 
 	# CLAUDE.md is now a symlink to the canonical pi AGENTS.md
 	assert_symlink_target "$home_dir/.claude/CLAUDE.md" "$home_dir/.pi/agent/AGENTS.md"
@@ -121,11 +129,12 @@ main() {
 	assert_exists "$home_dir/.claude/settings.json"
 	assert_symlink_resolves_to "$home_dir/.claude/agents" "$REPO_ROOT/claude/.claude/agents"
 	# The skills CLI links each managed skill into Claude Code's skill directory.
-	assert_symlink_resolves_to "$home_dir/.claude/skills/find-docs" "$home_dir/.agents/skills/find-docs"
-	assert_symlink_resolves_to "$home_dir/.claude/skills/grill-me" "$home_dir/.agents/skills/grill-me"
-	assert_symlink_resolves_to "$home_dir/.claude/skills/grill-with-docs" "$home_dir/.agents/skills/grill-with-docs"
-	assert_symlink_resolves_to "$home_dir/.claude/skills/handoff" "$home_dir/.agents/skills/handoff"
-	assert_exists "$home_dir/.claude/skills/find-docs/SKILL.md"
+	while read -r repo skills; do
+		for skill in $skills; do
+			assert_symlink_resolves_to "$home_dir/.claude/skills/$skill" "$home_dir/.agents/skills/$skill"
+			assert_exists "$home_dir/.claude/skills/$skill/SKILL.md"
+		done
+	done <<< "$skill_entries"
 
 	run_make "$home_dir" sync-pi
 	# pi owns the canonical instructions as a real generated file
