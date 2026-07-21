@@ -19,10 +19,10 @@ claude/
 └── claude_settings.personal.json.example # Template for the above
 ```
 
-Two shared sources are tool-neutral and live outside `claude/`: the instruction
-source (`agents-md/AGENTS.base.md`, `AGENTS.personal.md`) and the skills installed
-into `~/.agents/skills/` by the pinned skills CLI. See the top-level README and
-`docs/ai.md`.
+Shared instruction inputs live outside `claude/`: `agents-md/AGENTS.base.md`,
+the required `AGENTS.personal.mk`, and the optional `AGENTS.personal.md`. Skills
+are installed into `~/.agents/skills/` by the pinned skills CLI. See the top-level
+README and `docs/ai.md`.
 
 `sync-claude` symlinks `agents/` into `~/.claude/`. Its `sync-skills`
 dependency asks the skills CLI to create one symlink per managed skill under
@@ -32,12 +32,25 @@ directly — edit the sources and re-run `make sync-claude`.
 
 ## Personal Configuration
 
-Two files let you override shared config without touching tracked files.
-Both are gitignored so your changes stay local.
+Three files let you personalize generated config without touching tracked files.
+They are gitignored so your changes stay local.
 
-### AGENTS.personal.md — instructions for your agents
+### AGENTS.personal.mk — required identity value
 
-Controls how the agents behave: your name, preferred language, custom rules, safe words, etc.
+Provides the name rendered into each `{{PARTNER_NAME}}` placeholder:
+
+```bash
+cp agents-md/AGENTS.personal.mk.example agents-md/AGENTS.personal.mk
+# Set AGENT_NAME, then:
+make sync-claude
+```
+
+The sync fails with a clear error when `AGENT_NAME` is missing.
+
+### AGENTS.personal.md — optional instructions for your agents
+
+Controls preferences and custom rules such as language, safe words, and tool choices.
+Identity wording already lives in the tracked template and receives the name above.
 
 ```bash
 cp agents-md/AGENTS.personal.md.example agents-md/AGENTS.personal.md
@@ -45,9 +58,12 @@ cp agents-md/AGENTS.personal.md.example agents-md/AGENTS.personal.md
 make sync-claude
 ```
 
-`sync-claude` concatenates `AGENTS.base.md` + `AGENTS.personal.md` → the canonical `~/.pi/agent/AGENTS.md`
-(which `~/.claude/CLAUDE.md` symlinks to). Personal content appends after the base, so your rules take precedence.
-If `~/.pi/agent/AGENTS.md` already exists with different contents, the sync stops instead of overwriting it — run `make sync-agents-md-force` to regenerate only the canonical instructions.
+`sync-claude` renders `AGENTS.base.md`, replaces `{{PARTNER_NAME}}`, and inserts
+`AGENTS.personal.md` at `{{PERSONAL_INSTRUCTIONS}}` to create the canonical
+`~/.pi/agent/AGENTS.md` (which `~/.claude/CLAUDE.md` symlinks to). If the
+canonical file already exists with different contents, the sync stops instead
+of overwriting it; run `make sync-agents-md-force` to regenerate only the
+canonical instructions.
 
 ### claude_settings.personal.json — settings overrides
 

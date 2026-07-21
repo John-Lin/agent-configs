@@ -1,0 +1,2 @@
+# Personal name rendered into AGENTS.base.md by make sync-agents-md.
+AGENT_NAME ?= YOUR_NAME

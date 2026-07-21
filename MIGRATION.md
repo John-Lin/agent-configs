@@ -112,6 +112,7 @@ cd ~/dotfiles && git pull
 
 Copy your untracked personal and work inputs onto the new machine if you use them:
 
+- `agents-md/AGENTS.personal.mk`
 - `agents-md/AGENTS.personal.md`
 - `claude/claude_settings.personal.json`
 - `opencode_work.libsonnet` in the external directory selected by
@@ -271,10 +272,16 @@ Re-running the steps on an already-migrated machine is a safe no-op.
 # Adjust the path if you cloned the repo elsewhere (e.g. ~/agent-configs).
 cd ~/workspace/agent-configs && git pull
 
-# 1. Put your personal instructions at the new path, agents-md/AGENTS.personal.md.
-#    Relocate one from an older path only if the new path doesn't already have it
-#    (never clobber an existing agents-md/AGENTS.personal.md):
+# 1. Configure the required name used to render the instruction template.
 mkdir -p agents-md
+if [ ! -e agents-md/AGENTS.personal.mk ]; then
+  cp agents-md/AGENTS.personal.mk.example agents-md/AGENTS.personal.mk
+  echo "Edit AGENT_NAME in agents-md/AGENTS.personal.mk before continuing."
+fi
+
+# 1b. Put optional personal instructions at agents-md/AGENTS.personal.md.
+#     Relocate one from an older path only if the new path doesn't already have it
+#     (never clobber an existing agents-md/AGENTS.personal.md):
 if [ ! -e agents-md/AGENTS.personal.md ]; then
   for old in claude/.claude/CLAUDE.personal.md claude/.claude/AGENTS.personal.md; do
     [ -f "$old" ] && { mv "$old" agents-md/AGENTS.personal.md; break; }
@@ -285,7 +292,7 @@ fi
 #    (No personal file on disk but ~/.claude/CLAUDE.md has custom content beyond
 #     the shared base? See "Recovering personal content" below first.)
 
-# 2. Generate the canonical real file ~/.pi/agent/AGENTS.md (base + personal).
+# 2. Generate the canonical real file ~/.pi/agent/AGENTS.md (rendered template + personal).
 #    This replaces the old ~/.pi/agent/AGENTS.md -> ~/.claude/CLAUDE.md symlink.
 make sync-agents-md
 
@@ -317,29 +324,24 @@ make sync-skills                  # install upstream skills and Claude per-skill
 
 ## Recovering personal content
 
-If step 1 found no personal file on disk but your live `~/.claude/CLAUDE.md` has
-custom content appended after the shared base (it was baked in at generation time
-and the source file is gone), recover it from the live file:
+If step 1b found no personal file on disk but your live `~/.claude/CLAUDE.md`
+has custom content baked into it, recover those additions manually. First render
+the current template without optional instructions, then compare it with the live
+file:
 
 ```bash
-base_lines=$(wc -l < agents-md/AGENTS.base.md)
-tail -n +$((base_lines + 2)) ~/.claude/CLAUDE.md > agents-md/AGENTS.personal.md
-
-# Verify the split reproduces your current file byte-for-byte:
-{ cat agents-md/AGENTS.base.md; echo ""; cat agents-md/AGENTS.personal.md; } \
-  | cmp - ~/.claude/CLAUDE.md && echo "faithful ✅"
+# AGENT_NAME comes from agents-md/AGENTS.personal.mk via make; export the same
+# value here before invoking the renderer directly.
+export AGENT_NAME=YOUR_NAME
+scripts/render-agents-md.sh agents-md/AGENTS.base.md /dev/null \
+  > /tmp/AGENTS.base.rendered.md
+diff -u /tmp/AGENTS.base.rendered.md ~/.claude/CLAUDE.md
 ```
 
-- Prints `faithful ✅` → re-run from step 2.
-- `agents-md/AGENTS.personal.md` came out empty → your `~/.claude/CLAUDE.md` was
-  base-only; delete the empty file and continue.
-- **No `faithful ✅` (cmp reports a difference)** → the shared base changed since
-  this machine's `CLAUDE.md` was generated, so the line-count split is unreliable.
-  Don't trust the auto-extracted file: open `~/.claude/CLAUDE.md`, copy only your
-  personal additions (everything below the shared base) into
-  `agents-md/AGENTS.personal.md` by hand, then continue. The new canonical will
-  intentionally pick up the base updates, so it won't byte-match the old
-  `CLAUDE.md` — see *Reconciling a mismatch* for re-pointing in that case.
+Copy only the personal additions from the live file into
+`agents-md/AGENTS.personal.md`, then re-run from step 2. Do not use the old
+line-count split: identity interpolation and upstream template changes make that
+method unreliable.
 
 ## Reconciling a mismatch
 
@@ -376,9 +378,10 @@ under `~/.claude/skills/`.
 
 ## Updating personal instructions afterward
 
-Once `~/.pi/agent/AGENTS.md` is a real file, editing `agents-md/AGENTS.personal.md`
-(or creating it for the first time, on a machine that finished the migration
-base-only) and re-running `make sync-agents-md` is **refused** — the conservative
+Once `~/.pi/agent/AGENTS.md` is a real file, editing
+`agents-md/AGENTS.personal.mk` or `agents-md/AGENTS.personal.md` (or creating the
+optional instructions file for the first time) and re-running
+`make sync-agents-md` is **refused** — the conservative
 guard won't overwrite the existing real canonical:
 
 ```
@@ -387,7 +390,7 @@ guard won't overwrite the existing real canonical:
 ```
 
 Use the force target to regenerate just the instructions. It rebuilds the
-canonical from base + personal and leaves `~/.pi/agent/settings.json`,
+canonical from the rendered template + personal instructions and leaves `~/.pi/agent/settings.json`,
 `~/.claude/settings.json`, and `~/.config/opencode/opencode.json` untouched
 (unlike `make sync-pi-force`, which also re-injects pi packages):
 

@@ -11,6 +11,13 @@ and agent config can evolve independently.
 git clone https://github.com/John-Lin/agent-configs ~/agent-configs
 cd ~/agent-configs
 
+# Configure the required personal name
+cp agents-md/AGENTS.personal.mk.example agents-md/AGENTS.personal.mk
+# Edit AGENT_NAME in agents-md/AGENTS.personal.mk
+
+# Optional: add personal instructions
+cp agents-md/AGENTS.personal.md.example agents-md/AGENTS.personal.md
+
 # Show available install targets
 make sync
 
@@ -33,7 +40,7 @@ make sync-opencode      # OpenCode agents + generated opencode.json + AGENTS.md
 make sync-pi            # pi canonical AGENTS.md + packages injection
 make sync-skills        # upstream skills → ~/.agents/skills/<name>
 
-make sync-agents-md-force  # regenerate canonical AGENTS.md only (after editing AGENTS.personal.md)
+make sync-agents-md-force  # regenerate AGENTS.md after editing personal name/instructions
 make sync-claude-force
 make sync-opencode-force
 make sync-pi-force
@@ -48,7 +55,7 @@ make clean
 
 ## Repo Layout
 
-- `agents-md/` - shared, tool-neutral instruction source (canonical `AGENTS.md`)
+- `agents-md/` - shared instruction template and personal inputs for canonical `AGENTS.md`
 - `claude/` - Claude Code config and local override templates
 - `ccstatusline/` - Claude status line config
 - `opencode/` - OpenCode agents
@@ -60,15 +67,18 @@ make clean
 
 Personal and work-specific inputs are not tracked by this repository:
 
-- `agents-md/AGENTS.personal.md` (merged into the canonical `~/.pi/agent/AGENTS.md`)
+- `agents-md/AGENTS.personal.mk` (required `AGENT_NAME` rendered into the template)
+- `agents-md/AGENTS.personal.md` (optional instructions rendered at `{{PERSONAL_INSTRUCTIONS}}`)
 - `claude/claude_settings.personal.json` (merged into `~/.claude/settings.json`)
 - `opencode_work.libsonnet` in the external directory selected by
   `OPENCODE_WORK_CONFIG`
 
-The first two files are gitignored and must be copied to each new machine before
-running sync targets; without them, sync uses only the tracked base/template.
-Keep the OpenCode work overlay outside this repository and pass its directory via
-`OPENCODE_WORK_CONFIG` when running `make sync-opencode`.
+These files are gitignored. Copy `AGENTS.personal.mk.example` to
+`AGENTS.personal.mk` and set `AGENT_NAME` before running a sync target; the sync
+fails rather than generating unresolved identity instructions when the name is
+missing. `AGENTS.personal.md` remains optional. Keep the OpenCode work overlay
+outside this repository and pass its directory via `OPENCODE_WORK_CONFIG` when
+running `make sync-opencode`.
 
 The shared instructions are generated once as the canonical
 `~/.pi/agent/AGENTS.md` (pi owns it). Claude Code and OpenCode point at it via

@@ -4,6 +4,7 @@ set -euo pipefail
 
 REPO_ROOT=$(pwd)
 TEST_OUTPUT=$(mktemp /tmp/makefile-safety.out.XXXXXX)
+export AGENT_NAME="Test Partner"
 
 cleanup() {
 	rm -f "$TEST_OUTPUT"
@@ -31,6 +32,30 @@ assert_contains() {
 
 	if ! grep -Fq "$expected" "$file"; then
 		printf 'Expected %s to contain: %s\n' "$file" "$expected" >&2
+		exit 1
+	fi
+}
+
+assert_not_contains() {
+	local file="$1"
+	local unexpected="$2"
+
+	if grep -Fq "$unexpected" "$file"; then
+		printf 'Expected %s not to contain: %s\n' "$file" "$unexpected" >&2
+		exit 1
+	fi
+}
+
+assert_occurrences() {
+	local file="$1"
+	local expected="$2"
+	local expected_count="$3"
+	local actual_count
+
+	actual_count=$({ grep -Fo "$expected" "$file" || true; } | wc -l | tr -d ' ')
+	if [ "$actual_count" != "$expected_count" ]; then
+		printf 'Expected %s to contain %s occurrences of %s, got %s\n' \
+			"$file" "$expected_count" "$expected" "$actual_count" >&2
 		exit 1
 	fi
 }
@@ -212,6 +237,134 @@ test_sync_agents_md_force_overwrites_canonical() {
 	assert_contains "$home_dir/.pi/agent/AGENTS.md" "You are an experienced, pragmatic software engineer."
 }
 
+test_agents_template_uses_personal_placeholders() {
+	local template="$REPO_ROOT/agents-md/AGENTS.base.md"
+
+	assert_occurrences "$template" '{{PARTNER_NAME}}' 5
+	assert_occurrences "$template" '{{PERSONAL_INSTRUCTIONS}}' 1
+	assert_not_contains "$template" 'John'
+	assert_not_contains "$template" 'Jesse'
+}
+
+test_agents_renderer_rejects_example_name() {
+	local template
+	template=$(mktemp /tmp/agents-template.XXXXXX)
+	trap 'rm -f "${template-}"' RETURN
+
+	printf '{{PARTNER_NAME}}\n{{PERSONAL_INSTRUCTIONS}}\n' >"$template"
+	if AGENT_NAME=YOUR_NAME "$REPO_ROOT/scripts/render-agents-md.sh" "$template" /dev/null >"$TEST_OUTPUT" 2>&1; then
+		printf 'Expected renderer to reject example AGENT_NAME\n' >&2
+		exit 1
+	fi
+	assert_contains "$TEST_OUTPUT" 'AGENT_NAME must be set to your name'
+}
+
+test_agents_renderer_requires_one_personal_placeholder() {
+	local template
+	template=$(mktemp /tmp/agents-template.XXXXXX)
+	trap 'rm -f "${template-}"' RETURN
+
+	printf '{{PARTNER_NAME}}\n' >"$template"
+	if "$REPO_ROOT/scripts/render-agents-md.sh" "$template" /dev/null >"$TEST_OUTPUT" 2>&1; then
+		printf 'Expected renderer to reject a template without {{PERSONAL_INSTRUCTIONS}}\n' >&2
+		exit 1
+	fi
+	assert_contains "$TEST_OUTPUT" 'exactly one {{PERSONAL_INSTRUCTIONS}} line'
+
+	printf '{{PARTNER_NAME}}\n{{PERSONAL_INSTRUCTIONS}}\n{{PERSONAL_INSTRUCTIONS}}\n' >"$template"
+	if "$REPO_ROOT/scripts/render-agents-md.sh" "$template" /dev/null >"$TEST_OUTPUT" 2>&1; then
+		printf 'Expected renderer to reject duplicate {{PERSONAL_INSTRUCTIONS}} lines\n' >&2
+		exit 1
+	fi
+	assert_contains "$TEST_OUTPUT" 'exactly one {{PERSONAL_INSTRUCTIONS}} line'
+}
+
+test_agents_renderer_interpolates_name_and_personal_instructions() {
+	local template personal output expected
+	template=$(mktemp /tmp/agents-template.XXXXXX)
+	personal=$(mktemp /tmp/agents-personal.XXXXXX)
+	output=$(mktemp /tmp/agents-output.XXXXXX)
+	expected=$(mktemp /tmp/agents-expected.XXXXXX)
+	trap 'rm -f "${template-}" "${personal-}" "${output-}" "${expected-}"' RETURN
+
+	printf 'Hello, {{PARTNER_NAME}}.\n{{PERSONAL_INSTRUCTIONS}}\nGoodbye, {{PARTNER_NAME}}.\n' >"$template"
+	printf 'Personal instruction.\n' >"$personal"
+	printf 'Hello, Test Partner.\nPersonal instruction.\nGoodbye, Test Partner.\n' >"$expected"
+
+	"$REPO_ROOT/scripts/render-agents-md.sh" "$template" "$personal" >"$output"
+	if ! cmp -s "$output" "$expected"; then
+		printf 'Rendered AGENTS.md did not match expected output\n' >&2
+		diff -u "$expected" "$output" >&2 || true
+		exit 1
+	fi
+}
+
+test_agents_renderer_accepts_no_personal_instructions() {
+	local template output expected
+	template=$(mktemp /tmp/agents-template.XXXXXX)
+	output=$(mktemp /tmp/agents-output.XXXXXX)
+	expected=$(mktemp /tmp/agents-expected.XXXXXX)
+	trap 'rm -f "${template-}" "${output-}" "${expected-}"' RETURN
+
+	printf 'Hello, {{PARTNER_NAME}}.\n{{PERSONAL_INSTRUCTIONS}}\n' >"$template"
+	printf 'Hello, Test Partner.\n' >"$expected"
+
+	"$REPO_ROOT/scripts/render-agents-md.sh" "$template" /dev/null >"$output"
+	if ! cmp -s "$output" "$expected"; then
+		printf 'Name-only AGENTS.md did not match expected output\n' >&2
+		diff -u "$expected" "$output" >&2 || true
+		exit 1
+	fi
+}
+
+test_sync_agents_md_renders_personal_name() {
+	local home_dir output
+	home_dir=$(mktemp -d)
+	trap '[ -n "${home_dir-}" ] && rm -rf "$home_dir"' RETURN
+	output="$home_dir/.pi/agent/AGENTS.md"
+
+	HOME="$home_dir" make sync-agents-md-force >"$TEST_OUTPUT" 2>&1
+	assert_contains "$output" 'address your human partner as "Test Partner"'
+	assert_contains "$output" 'working together as "Test Partner" and "Bot"'
+	assert_not_contains "$output" '{{PARTNER_NAME}}'
+	assert_not_contains "$output" '{{PERSONAL_INSTRUCTIONS}}'
+}
+
+test_sync_agents_md_rejects_example_name() {
+	local home_dir
+	home_dir=$(mktemp -d)
+	trap '[ -n "${home_dir-}" ] && rm -rf "$home_dir"' RETURN
+
+	if HOME="$home_dir" make sync-agents-md-force AGENT_NAME=YOUR_NAME >"$TEST_OUTPUT" 2>&1; then
+		printf 'Expected sync-agents-md-force to reject example AGENT_NAME\n' >&2
+		exit 1
+	fi
+	assert_contains "$TEST_OUTPUT" 'AGENT_NAME must be set to your name'
+}
+
+test_sync_agents_md_requires_personal_name() {
+	local home_dir canonical expected
+	home_dir=$(mktemp -d)
+	trap '[ -n "${home_dir-}" ] && rm -rf "$home_dir"' RETURN
+	canonical="$home_dir/.pi/agent/AGENTS.md"
+	mkdir -p "$(dirname "$canonical")"
+	printf 'keep me\n' >"$canonical"
+	expected=$(mktemp /tmp/agents-canonical.XXXXXX)
+	cp "$canonical" "$expected"
+	trap 'rm -f "${expected-}"; [ -n "${home_dir-}" ] && rm -rf "$home_dir"' RETURN
+
+	if HOME="$home_dir" make sync-agents-md-force AGENT_NAME= >"$TEST_OUTPUT" 2>&1; then
+		printf 'Expected sync-agents-md-force to fail without AGENT_NAME\n' >&2
+		exit 1
+	fi
+	assert_contains "$TEST_OUTPUT" 'AGENT_NAME is required'
+	assert_file_exists "$canonical"
+	if ! cmp -s "$canonical" "$expected"; then
+		printf 'Expected failed force sync to preserve canonical AGENTS.md byte-for-byte\n' >&2
+		exit 1
+	fi
+}
+
 test_sync_pi_preserves_existing_canonical() {
 	local home_dir
 	home_dir=$(mktemp -d)
@@ -279,6 +432,14 @@ main() {
 	test_sync_claude_force_overwrites_generated_files
 	test_sync_agents_md_preserves_existing_canonical
 	test_sync_agents_md_force_overwrites_canonical
+	test_agents_template_uses_personal_placeholders
+	test_agents_renderer_rejects_example_name
+	test_agents_renderer_requires_one_personal_placeholder
+	test_agents_renderer_interpolates_name_and_personal_instructions
+	test_agents_renderer_accepts_no_personal_instructions
+	test_sync_agents_md_renders_personal_name
+	test_sync_agents_md_rejects_example_name
+	test_sync_agents_md_requires_personal_name
 	test_sync_pi_preserves_existing_canonical
 	test_sync_pi_force_overwrites_canonical
 	test_clean_claude_preserves_custom_files

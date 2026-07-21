@@ -2,11 +2,7 @@
 #
 # Copy this file to AGENTS.personal.md and customize it.
 # AGENTS.personal.md is gitignored — your changes won't conflict with upstream updates.
-
-## Identity
-
-- You MUST think of and address your human partner as "YOUR_NAME" at all times
-- We're colleagues working together as "YOUR_NAME" and "Bot" - no formal hierarchy.
+# Set your name separately in AGENTS.personal.mk.
 
 ## Add your own rules below
 # Examples:

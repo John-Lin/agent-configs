@@ -6,17 +6,20 @@
 
 ## Shared instructions (AGENTS.md)
 
-All three agents read one canonical instruction file, generated from
-`agents-md/AGENTS.base.md` (+ optional gitignored `agents-md/AGENTS.personal.md`):
+All three agents read one canonical instruction file. `make` renders
+`agents-md/AGENTS.base.md` with the required gitignored `AGENTS.personal.mk`
+name and optional gitignored `AGENTS.personal.md` instructions:
 
 - Canonical file: `~/.pi/agent/AGENTS.md` (a real file — pi owns it)
 - `~/.claude/CLAUDE.md` → symlink → `~/.pi/agent/AGENTS.md` (Claude Code)
 - `~/.config/opencode/AGENTS.md` → symlink → `~/.pi/agent/AGENTS.md` (OpenCode)
 
-Any of `make sync-claude` / `sync-opencode` / `sync-pi` regenerates the canonical
-file first, so it always exists before the symlinks are created. If the canonical
-file has drifted from the repo, the sync stops; run `make sync-agents-md-force` to
-regenerate only the canonical instructions.
+Copy `agents-md/AGENTS.personal.mk.example` to `AGENTS.personal.mk` and set
+`AGENT_NAME` before syncing. Any of `make sync-claude` / `sync-opencode` /
+`sync-pi` regenerates the canonical file first, so it always exists before the
+symlinks are created. If the canonical file has drifted from the rendered
+sources, the sync stops; run `make sync-agents-md-force` to regenerate only the
+canonical instructions.
 
 ## Claude Code
 

@@ -5,7 +5,12 @@ all: sync
 SHELL := /bin/bash
 
 REPO_ROOT := $(abspath $(CURDIR))
+AGENTS_PERSONAL_CONFIG := $(REPO_ROOT)/agents-md/AGENTS.personal.mk
+AGENTS_RENDERER := $(REPO_ROOT)/scripts/render-agents-md.sh
 SKILLS_CLI := npx --yes skills@1.5.19
+
+-include $(AGENTS_PERSONAL_CONFIG)
+export AGENT_NAME
 
 # skills.yaml is the single source of truth for managed skills; the smoke test
 # derives its assertions from the same file.
@@ -50,17 +55,28 @@ elif [ -e "$$target" ]; then \
 fi
 endef
 
-# Merge base + optional personal instructions into the file at $(1).
+# Render the instruction template with the personal name and optional instructions.
 # This is the canonical AGENTS.md content, owned by ~/.pi/agent/AGENTS.md.
 define build_agents_md
-if [ -f "$(REPO_ROOT)/agents-md/AGENTS.personal.md" ]; then \
-	echo "  Merging base + personal → AGENTS.md"; \
-	{ cat "$(REPO_ROOT)/agents-md/AGENTS.base.md"; echo ""; cat "$(REPO_ROOT)/agents-md/AGENTS.personal.md"; } > "$(1)"; \
+if [ -z "$${AGENT_NAME:-}" ]; then \
+	echo "❌ AGENT_NAME is required"; \
+	echo "   Copy AGENTS.personal.mk.example → AGENTS.personal.mk and set your name"; \
+	exit 1; \
+fi; \
+if [ "$$AGENT_NAME" = "YOUR_NAME" ]; then \
+	echo "❌ AGENT_NAME must be set to your name"; \
+	echo "   Edit AGENTS.personal.mk before running sync"; \
+	exit 1; \
+fi; \
+personal_instructions="$(REPO_ROOT)/agents-md/AGENTS.personal.md"; \
+if [ -f "$$personal_instructions" ]; then \
+	echo "  Rendering template with personal name and instructions → AGENTS.md"; \
 else \
-	echo "  No AGENTS.personal.md found, using base only"; \
+	echo "  No AGENTS.personal.md found, rendering name only"; \
 	echo "  💡 Copy AGENTS.personal.md.example → AGENTS.personal.md to customize"; \
-	cp "$(REPO_ROOT)/agents-md/AGENTS.base.md" "$(1)"; \
-fi
+	personal_instructions=/dev/null; \
+fi; \
+"$(AGENTS_RENDERER)" "$(REPO_ROOT)/agents-md/AGENTS.base.md" "$$personal_instructions" > "$(1)"
 endef
 
 # Merge settings template + optional personal overrides into the file at $(1).
@@ -118,7 +134,7 @@ sync-agents-md:
 	cleanup() { rm -f "$$tmp_agents"; }; \
 	trap cleanup EXIT; \
 	$(call build_agents_md,$$tmp_agents); \
-	if [ -e "$${HOME}/.pi/agent/AGENTS.md" ] && [ ! -L "$${HOME}/.pi/agent/AGENTS.md" ] && ! cmp -s "$$tmp_agents" "$${HOME}/.pi/agent/AGENTS.md"; then \
+	if [ "$(AGENTS_MD_FORCE)" != "1" ] && [ -e "$${HOME}/.pi/agent/AGENTS.md" ] && [ ! -L "$${HOME}/.pi/agent/AGENTS.md" ] && ! cmp -s "$$tmp_agents" "$${HOME}/.pi/agent/AGENTS.md"; then \
 		echo "❌ $${HOME}/.pi/agent/AGENTS.md already exists with different contents"; \
 		echo "   Move it away manually or run make sync-agents-md-force"; \
 		exit 1; \
@@ -126,13 +142,11 @@ sync-agents-md:
 	mv "$$tmp_agents" "$${HOME}/.pi/agent/AGENTS.md"
 
 # Regenerate the canonical AGENTS.md, replacing an existing real file. Use after
-# editing AGENTS.personal.md when ~/.pi/agent/AGENTS.md is already a real file.
+# editing the personal name or instructions when ~/.pi/agent/AGENTS.md is already a real file.
 # Unlike sync-pi-force, this touches only the instructions, not settings.json.
 sync-agents-md-force:
 	@echo "📝 Regenerating canonical AGENTS.md (force)..."
-	@mkdir -p ~/.pi/agent
-	@rm -f ~/.pi/agent/AGENTS.md
-	@$(MAKE) sync-agents-md
+	@$(MAKE) sync-agents-md AGENTS_MD_FORCE=1
 
 # Install Claude Code configuration
 # CLAUDE.md is a symlink to the canonical ~/.pi/agent/AGENTS.md.

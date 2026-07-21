@@ -71,7 +71,7 @@ run_make() {
 	local home_dir="$1"
 	shift
 
-	if ! HOME="$home_dir" make "$@" >"$test_output" 2>&1; then
+	if ! AGENT_NAME="Test Partner" HOME="$home_dir" make "$@" >"$test_output" 2>&1; then
 		cat "$test_output" >&2
 		exit 1
 	fi
@@ -140,6 +140,7 @@ main() {
 	# pi owns the canonical instructions as a real generated file
 	assert_regular_file "$home_dir/.pi/agent/AGENTS.md"
 	assert_file_contains "$home_dir/.pi/agent/AGENTS.md" 'You are an experienced, pragmatic software engineer.'
+	assert_file_contains "$home_dir/.pi/agent/AGENTS.md" 'address your human partner as "Test Partner"'
 	assert_exists "$home_dir/.pi/agent/settings.json"
 	assert_file_contains "$home_dir/.pi/agent/settings.json" 'npm:pi-subagents'
 
