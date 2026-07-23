@@ -26,7 +26,6 @@
     "themes": [],
     "prompts": []
   },
-  "npm:pi-subagents",
   "npm:pi-mcp-adapter",
   "npm:pi-discuss-mode",
   "../../workspace/johnlin/ly-pi-extension",
