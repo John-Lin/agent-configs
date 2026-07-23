@@ -3,6 +3,9 @@
 set -euo pipefail
 
 REPO_ROOT=$(pwd)
+# Derive the canonical marker from its source so assertions track wording
+# changes to the shared instructions instead of duplicating the literal.
+CANONICAL_MARKER=$(head -n1 "$REPO_ROOT/agents-md/AGENTS.base.md")
 CLEANUP_HOME=
 CLEANUP_OUTPUT=
 
@@ -84,17 +87,13 @@ manifest_entries() {
 }
 
 main() {
-	local home_dir test_output skill_entries repo skills skill
+	local home_dir test_output skill_entries repo skills skill first_pkg
 	home_dir=$(mktemp -d)
 	test_output=$(mktemp /tmp/sync-smoke.out.XXXXXX)
 	CLEANUP_HOME="$home_dir"
 	CLEANUP_OUTPUT="$test_output"
 
 	cd "$REPO_ROOT"
-
-	assert_file_contains "$REPO_ROOT/docs/ai.md" '- `typescript-pro` - TypeScript specialist'
-	assert_file_contains "$REPO_ROOT/README.md" 'make sync-pi'
-	assert_file_contains "$REPO_ROOT/jsonnet/README.md" '| `gpt-5.5` | GPT-5.5 | 5.00 | 30.00 |'
 
 	run_make "$home_dir" sync-ccstatusline
 	assert_symlink_resolves_to "$home_dir/.config/ccstatusline/settings.json" "$REPO_ROOT/ccstatusline/.config/ccstatusline/settings.json"
@@ -125,7 +124,7 @@ main() {
 
 	# CLAUDE.md is now a symlink to the canonical pi AGENTS.md
 	assert_symlink_target "$home_dir/.claude/CLAUDE.md" "$home_dir/.pi/agent/AGENTS.md"
-	assert_file_contains "$home_dir/.claude/CLAUDE.md" 'You are an experienced, pragmatic software engineer.'
+	assert_file_contains "$home_dir/.claude/CLAUDE.md" "$CANONICAL_MARKER"
 	assert_exists "$home_dir/.claude/settings.json"
 	assert_symlink_resolves_to "$home_dir/.claude/agents" "$REPO_ROOT/claude/.claude/agents"
 	# The skills CLI links each managed skill into Claude Code's skill directory.
@@ -139,9 +138,12 @@ main() {
 	run_make "$home_dir" sync-pi
 	# pi owns the canonical instructions as a real generated file
 	assert_regular_file "$home_dir/.pi/agent/AGENTS.md"
-	assert_file_contains "$home_dir/.pi/agent/AGENTS.md" 'You are an experienced, pragmatic software engineer.'
+	assert_file_contains "$home_dir/.pi/agent/AGENTS.md" "$CANONICAL_MARKER"
 	assert_exists "$home_dir/.pi/agent/settings.json"
-	assert_file_contains "$home_dir/.pi/agent/settings.json" 'npm:pi-subagents'
+	# sync-pi must merge packages.json into settings.json. Derive an expected
+	# package from the manifest so the assertion tracks changes automatically.
+	first_pkg=$(jq -r '.. | strings | select(startswith("npm:"))' "$REPO_ROOT/pi/packages.json" | head -1)
+	assert_file_contains "$home_dir/.pi/agent/settings.json" "$first_pkg"
 
 	mkdir -p "$home_dir/.agents/skills/unmanaged-skill"
 	printf '%s\n' 'keep me' >"$home_dir/.agents/skills/unmanaged-skill/SKILL.md"

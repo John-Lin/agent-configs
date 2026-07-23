@@ -5,6 +5,11 @@ set -euo pipefail
 REPO_ROOT=$(pwd)
 TEST_OUTPUT=$(mktemp /tmp/makefile-safety.out.XXXXXX)
 
+# Derive expected values from their sources so assertions track changes to the
+# canonical instructions and the skills manifest instead of hardcoding names.
+CANONICAL_MARKER=$(head -n1 "$REPO_ROOT/agents-md/AGENTS.base.md")
+FIRST_MANAGED_SKILL=$(yq -r '[.[][]][0]' "$REPO_ROOT/skills.yaml")
+
 cleanup() {
 	rm -f "$TEST_OUTPUT"
 }
@@ -182,9 +187,9 @@ test_sync_claude_force_overwrites_generated_files() {
 
 	HOME="$home_dir" make sync-claude-force >"$TEST_OUTPUT" 2>&1
 	assert_symlink_target "$home_dir/.claude/agents" "$REPO_ROOT/claude/.claude/agents"
-	assert_symlink_resolves_to "$home_dir/.claude/skills/find-docs" "$home_dir/.agents/skills/find-docs"
+	assert_symlink_resolves_to "$home_dir/.claude/skills/$FIRST_MANAGED_SKILL" "$home_dir/.agents/skills/$FIRST_MANAGED_SKILL"
 	assert_symlink_target "$home_dir/.claude/CLAUDE.md" "$home_dir/.pi/agent/AGENTS.md"
-	assert_contains "$home_dir/.claude/CLAUDE.md" "You are an experienced, pragmatic software engineer."
+	assert_contains "$home_dir/.claude/CLAUDE.md" "$CANONICAL_MARKER"
 }
 
 test_sync_agents_md_preserves_existing_canonical() {
@@ -209,7 +214,7 @@ test_sync_agents_md_force_overwrites_canonical() {
 	printf 'custom agents\n' >"$home_dir/.pi/agent/AGENTS.md"
 
 	HOME="$home_dir" make sync-agents-md-force >"$TEST_OUTPUT" 2>&1
-	assert_contains "$home_dir/.pi/agent/AGENTS.md" "You are an experienced, pragmatic software engineer."
+	assert_contains "$home_dir/.pi/agent/AGENTS.md" "$CANONICAL_MARKER"
 }
 
 test_sync_pi_preserves_existing_canonical() {
@@ -234,7 +239,7 @@ test_sync_pi_force_overwrites_canonical() {
 	printf 'custom agents\n' >"$home_dir/.pi/agent/AGENTS.md"
 
 	HOME="$home_dir" make sync-pi-force >"$TEST_OUTPUT" 2>&1
-	assert_contains "$home_dir/.pi/agent/AGENTS.md" "You are an experienced, pragmatic software engineer."
+	assert_contains "$home_dir/.pi/agent/AGENTS.md" "$CANONICAL_MARKER"
 }
 
 test_clean_claude_preserves_custom_files() {
