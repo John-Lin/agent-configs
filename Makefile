@@ -74,6 +74,16 @@ else \
 fi
 endef
 
+# Refuse to clobber a customised file: fail if $(1) already exists and differs
+# from the freshly built $(2), pointing the user at the force target $(3).
+define assert_no_conflict
+if [ -e "$(1)" ] && ! cmp -s "$(2)" "$(1)"; then \
+	echo "Error: $(1) already exists with different contents"; \
+	echo "   Move it away manually or run make $(3)"; \
+	exit 1; \
+fi
+endef
+
 define remove_managed_file
 target="$(1)"; expected="$(2)"; \
 if [ -L "$$target" ]; then \
@@ -121,8 +131,7 @@ sync-agents-md:
 	@set -e; \
 	mkdir -p ~/.pi/agent; \
 	tmp_agents="$$(mktemp /tmp/agents-md.XXXXXX)"; \
-	cleanup() { rm -f "$$tmp_agents"; }; \
-	trap cleanup EXIT; \
+	trap 'rm -f "$$tmp_agents"' EXIT; \
 	$(call build_agents_md,$$tmp_agents); \
 	if [ -e "$${HOME}/.pi/agent/AGENTS.md" ] && [ ! -L "$${HOME}/.pi/agent/AGENTS.md" ] && ! cmp -s "$$tmp_agents" "$${HOME}/.pi/agent/AGENTS.md"; then \
 		echo "Error: $${HOME}/.pi/agent/AGENTS.md already exists with different contents"; \
@@ -147,14 +156,9 @@ sync-claude: sync-agents-md sync-skills require-jq
 	@set -e; \
 	mkdir -p ~/.claude; \
 	tmp_settings="$$(mktemp /tmp/claude-settings.XXXXXX)"; \
-	cleanup() { rm -f "$$tmp_settings"; }; \
-	trap cleanup EXIT; \
+	trap 'rm -f "$$tmp_settings"' EXIT; \
 	$(call build_settings,$$tmp_settings); \
-	if [ -e "$${HOME}/.claude/settings.json" ] && ! cmp -s "$$tmp_settings" "$${HOME}/.claude/settings.json"; then \
-		echo "Error: $${HOME}/.claude/settings.json already exists with different contents"; \
-		echo "   Move it away manually or run make sync-claude-force"; \
-		exit 1; \
-	fi; \
+	$(call assert_no_conflict,$${HOME}/.claude/settings.json,$$tmp_settings,sync-claude-force); \
 	$(call ensure_safe_symlink,$${HOME}/.claude/CLAUDE.md,$${HOME}/.pi/agent/AGENTS.md,sync-claude-force); \
 	$(call ensure_safe_symlink,$${HOME}/.claude/agents,$(REPO_ROOT)/claude/.claude/agents,sync-claude-force); \
 	mv "$$tmp_settings" "$${HOME}/.claude/settings.json"; \
@@ -216,14 +220,9 @@ sync-opencode: sync-agents-md require-jsonnet
 	@set -e; \
 	echo "  Building opencode.json (env=$(OPENCODE_ENV))..."; \
 	tmp_opencode="$$(mktemp /tmp/opencode-json.XXXXXX)"; \
-	cleanup() { rm -f "$$tmp_opencode"; }; \
-	trap cleanup EXIT; \
+	trap 'rm -f "$$tmp_opencode"' EXIT; \
 	jsonnet $(OPENCODE_JPATH) --tla-str env=$(OPENCODE_ENV) "$(REPO_ROOT)/jsonnet/opencode.jsonnet" > "$$tmp_opencode"; \
-	if [ -e "$${HOME}/.config/opencode/opencode.json" ] && ! cmp -s "$$tmp_opencode" "$${HOME}/.config/opencode/opencode.json"; then \
-		echo "Error: ~/.config/opencode/opencode.json already exists with different contents"; \
-		echo "   Move it away manually or run make sync-opencode-force"; \
-		exit 1; \
-	fi; \
+	$(call assert_no_conflict,$${HOME}/.config/opencode/opencode.json,$$tmp_opencode,sync-opencode-force); \
 	$(call ensure_safe_symlink,$${HOME}/.config/opencode/agents,$(REPO_ROOT)/opencode/agents,sync-opencode-force); \
 	$(call ensure_safe_symlink,$${HOME}/.config/opencode/AGENTS.md,$${HOME}/.pi/agent/AGENTS.md,sync-opencode-force); \
 	mv "$$tmp_opencode" "$${HOME}/.config/opencode/opencode.json"; \
@@ -286,8 +285,7 @@ clean-claude: require-jq
 	@set -e; \
 	mkdir -p ~/.claude; \
 	tmp_settings="$$(mktemp /tmp/claude-settings.XXXXXX)"; \
-	cleanup() { rm -f "$$tmp_settings"; }; \
-	trap cleanup EXIT; \
+	trap 'rm -f "$$tmp_settings"' EXIT; \
 	$(call build_settings,$$tmp_settings); \
 	$(call remove_managed_file,$${HOME}/.claude/settings.json,$$tmp_settings)
 	@$(call remove_managed_path,$${HOME}/.claude/CLAUDE.md,$${HOME}/.pi/agent/AGENTS.md)
@@ -299,8 +297,7 @@ clean-opencode:
 	@set -e; \
 	if command -v jsonnet >/dev/null 2>&1; then \
 		tmp_opencode="$$(mktemp /tmp/opencode-json.XXXXXX)"; \
-		cleanup() { rm -f "$$tmp_opencode"; }; \
-		trap cleanup EXIT; \
+		trap 'rm -f "$$tmp_opencode"' EXIT; \
 		jsonnet $(OPENCODE_JPATH) --tla-str env=$(OPENCODE_ENV) "$(REPO_ROOT)/jsonnet/opencode.jsonnet" > "$$tmp_opencode"; \
 		$(call remove_managed_file,$${HOME}/.config/opencode/opencode.json,$$tmp_opencode); \
 	else \
@@ -314,8 +311,7 @@ clean-pi:
 	@echo "Removing pi configuration..."
 	@set -e; \
 	tmp_agents="$$(mktemp /tmp/agents-md.XXXXXX)"; \
-	cleanup() { rm -f "$$tmp_agents"; }; \
-	trap cleanup EXIT; \
+	trap 'rm -f "$$tmp_agents"' EXIT; \
 	$(call build_agents_md,$$tmp_agents); \
 	$(call remove_managed_file,$${HOME}/.pi/agent/AGENTS.md,$$tmp_agents)
 	@echo "  (settings.json left untouched — it is your personal file)"
