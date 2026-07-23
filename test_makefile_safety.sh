@@ -70,6 +70,22 @@ assert_symlink_resolves_to() {
 	fi
 }
 
+assert_packages_match_manifest() {
+	local settings="$1"
+	if ! diff <(jq -S '.packages' "$settings") <(jq -S '.' "$REPO_ROOT/pi/packages.json") >/dev/null; then
+		printf 'Expected %s .packages to match pi/packages.json\n' "$settings" >&2
+		exit 1
+	fi
+}
+
+assert_packages_empty() {
+	local settings="$1"
+	if [ "$(jq '.packages | length' "$settings")" != "0" ]; then
+		printf 'Expected %s .packages to be empty\n' "$settings" >&2
+		exit 1
+	fi
+}
+
 assert_make_fails() {
 	local home_dir="$1"
 	shift
@@ -272,6 +288,53 @@ test_clean_opencode_preserves_unmanaged_directory() {
 	assert_contains "$home_dir/.config/opencode/agents/local.txt" 'keep me'
 }
 
+# The pi package injection logic lives in scripts/sync-pi-packages.sh so it can
+# be exercised directly, including the interactive overwrite prompt.
+PI_PACKAGES_SCRIPT="$REPO_ROOT/scripts/sync-pi-packages.sh"
+
+test_sync_pi_packages_creates_missing_settings() {
+	local settings
+	settings=$(mktemp -d)/settings.json
+	trap '[ -n "${settings-}" ] && rm -rf "$(dirname "$settings")"' RETURN
+
+	bash "$PI_PACKAGES_SCRIPT" "$settings" "$REPO_ROOT/pi/packages.json" >"$TEST_OUTPUT" 2>&1
+	assert_file_exists "$settings"
+	assert_packages_match_manifest "$settings"
+}
+
+test_sync_pi_packages_leaves_matching_settings_untouched() {
+	local settings
+	settings=$(mktemp -d)/settings.json
+	trap '[ -n "${settings-}" ] && rm -rf "$(dirname "$settings")"' RETURN
+
+	jq -n '{packages: $pkgs[0], extra: "keep"}' --slurpfile pkgs "$REPO_ROOT/pi/packages.json" >"$settings"
+	bash "$PI_PACKAGES_SCRIPT" "$settings" "$REPO_ROOT/pi/packages.json" >"$TEST_OUTPUT" 2>&1
+	assert_contains "$TEST_OUTPUT" 'Packages already up to date'
+	assert_packages_match_manifest "$settings"
+	assert_contains "$settings" 'keep'
+}
+
+test_sync_pi_packages_skips_overwrite_when_declined() {
+	local settings
+	settings=$(mktemp -d)/settings.json
+	trap '[ -n "${settings-}" ] && rm -rf "$(dirname "$settings")"' RETURN
+
+	jq -n '{packages: []}' >"$settings"
+	echo n | bash "$PI_PACKAGES_SCRIPT" "$settings" "$REPO_ROOT/pi/packages.json" >"$TEST_OUTPUT" 2>&1
+	assert_contains "$TEST_OUTPUT" 'Skipped package injection'
+	assert_packages_empty "$settings"
+}
+
+test_sync_pi_packages_overwrites_when_confirmed() {
+	local settings
+	settings=$(mktemp -d)/settings.json
+	trap '[ -n "${settings-}" ] && rm -rf "$(dirname "$settings")"' RETURN
+
+	jq -n '{packages: []}' >"$settings"
+	echo y | bash "$PI_PACKAGES_SCRIPT" "$settings" "$REPO_ROOT/pi/packages.json" >"$TEST_OUTPUT" 2>&1
+	assert_packages_match_manifest "$settings"
+}
+
 main() {
 	cd "$REPO_ROOT"
 	test_sync_opencode_preserves_existing_directory
@@ -288,6 +351,10 @@ main() {
 	test_sync_pi_force_overwrites_canonical
 	test_clean_claude_preserves_custom_files
 	test_clean_opencode_preserves_unmanaged_directory
+	test_sync_pi_packages_creates_missing_settings
+	test_sync_pi_packages_leaves_matching_settings_untouched
+	test_sync_pi_packages_skips_overwrite_when_declined
+	test_sync_pi_packages_overwrites_when_confirmed
 }
 
 main "$@"

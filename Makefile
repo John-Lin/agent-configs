@@ -24,13 +24,13 @@ target="$(1)"; source="$(2)"; force_hint="$(3)"; \
 if [ -L "$$target" ]; then \
 	current="$$(readlink "$$target")"; \
 	if [ "$$current" != "$$source" ]; then \
-		echo "❌ $$target points to $$current"; \
+		echo "Error: $$target points to $$current"; \
 		echo "   Expected: $$source"; \
 		echo "   Remove it manually or run make $$force_hint"; \
 		exit 1; \
 	fi; \
 elif [ -e "$$target" ]; then \
-	echo "❌ $$target already exists and is not a symlink managed by this repo"; \
+	echo "Error: $$target already exists and is not a symlink managed by this repo"; \
 	echo "   Move it away manually or run make $$force_hint"; \
 	exit 1; \
 fi
@@ -43,10 +43,10 @@ if [ -L "$$target" ]; then \
 	if [ "$$current" = "$$source" ]; then \
 		rm -f "$$target"; \
 	else \
-		echo "⚠️  Skipping unmanaged symlink $$target -> $$current"; \
+		echo "Warning: Skipping unmanaged symlink $$target -> $$current"; \
 	fi; \
 elif [ -e "$$target" ]; then \
-	echo "⚠️  Skipping unmanaged path $$target"; \
+	echo "Warning: Skipping unmanaged path $$target"; \
 fi
 endef
 
@@ -58,7 +58,7 @@ if [ -f "$(REPO_ROOT)/agents-md/AGENTS.personal.md" ]; then \
 	{ cat "$(REPO_ROOT)/agents-md/AGENTS.base.md"; echo ""; cat "$(REPO_ROOT)/agents-md/AGENTS.personal.md"; } > "$(1)"; \
 else \
 	echo "  No AGENTS.personal.md found, using base only"; \
-	echo "  💡 Copy AGENTS.personal.md.example → AGENTS.personal.md to customize"; \
+	echo "  Copy AGENTS.personal.md.example → AGENTS.personal.md to customize"; \
 	cp "$(REPO_ROOT)/agents-md/AGENTS.base.md" "$(1)"; \
 fi
 endef
@@ -74,33 +74,49 @@ else \
 fi
 endef
 
+# Refuse to clobber a customised file: fail if $(1) already exists and differs
+# from the freshly built $(2), pointing the user at the force target $(3).
+define assert_no_conflict
+if [ -e "$(1)" ] && ! cmp -s "$(2)" "$(1)"; then \
+	echo "Error: $(1) already exists with different contents"; \
+	echo "   Move it away manually or run make $(3)"; \
+	exit 1; \
+fi
+endef
+
 define remove_managed_file
 target="$(1)"; expected="$(2)"; \
 if [ -L "$$target" ]; then \
-	echo "⚠️  Skipping unmanaged symlink $$target"; \
+	echo "Warning: Skipping unmanaged symlink $$target"; \
 elif [ -e "$$target" ]; then \
 	if cmp -s "$$target" "$$expected"; then \
 		rm -f "$$target"; \
 	else \
-		echo "⚠️  Skipping unmanaged file $$target"; \
+		echo "Warning: Skipping unmanaged file $$target"; \
 	fi; \
 fi
 endef
 
 # Shared prerequisites
 require-stow:
-	@command -v stow >/dev/null 2>&1 || { echo "❌ stow is not installed. Please install it first."; exit 1; }
+	@command -v stow >/dev/null 2>&1 || { echo "Error: stow is not installed. Please install it first."; exit 1; }
 
 require-npx:
-	@command -v npx >/dev/null 2>&1 || { echo "❌ npx is not installed. Please install Node.js first."; exit 1; }
+	@command -v npx >/dev/null 2>&1 || { echo "Error: npx is not installed. Please install Node.js first."; exit 1; }
 
 # mikefarah yq v4 (brew install yq); Ubuntu's apt "yq" is an incompatible tool.
 require-yq:
-	@command -v yq >/dev/null 2>&1 || { echo "❌ yq is not installed (brew install yq). Required to read skills.yaml."; exit 1; }
+	@command -v yq >/dev/null 2>&1 || { echo "Error: yq is not installed (brew install yq). Required to read skills.yaml."; exit 1; }
+
+require-jq:
+	@command -v jq >/dev/null 2>&1 || { echo "Error: jq is not installed. Please install it first."; exit 1; }
+
+require-jsonnet:
+	@command -v jsonnet >/dev/null 2>&1 || { echo "Error: jsonnet is not installed. Please install it first."; exit 1; }
 
 # Install all configurations (removed automatic installation)
 sync:
-	@echo "⚠️  Please specify which configuration to install:"
+	@echo "Warning: Please specify which configuration to install:"
 	@echo "  make sync-claude        - Install Claude Code configuration"
 	@echo "  make sync-ccstatusline  - Install ccstatusline configuration"
 	@echo "  make sync-opencode      - Install OpenCode configuration (agents + opencode.json)"
@@ -111,15 +127,14 @@ sync:
 # pi owns this file; Claude Code and OpenCode symlink to it. Every sync target
 # that needs the instructions depends on this so the canonical file always exists.
 sync-agents-md:
-	@echo "📝 Generating canonical AGENTS.md (~/.pi/agent/AGENTS.md)..."
+	@echo "Generating canonical AGENTS.md (~/.pi/agent/AGENTS.md)..."
 	@set -e; \
 	mkdir -p ~/.pi/agent; \
 	tmp_agents="$$(mktemp /tmp/agents-md.XXXXXX)"; \
-	cleanup() { rm -f "$$tmp_agents"; }; \
-	trap cleanup EXIT; \
+	trap 'rm -f "$$tmp_agents"' EXIT; \
 	$(call build_agents_md,$$tmp_agents); \
 	if [ -e "$${HOME}/.pi/agent/AGENTS.md" ] && [ ! -L "$${HOME}/.pi/agent/AGENTS.md" ] && ! cmp -s "$$tmp_agents" "$${HOME}/.pi/agent/AGENTS.md"; then \
-		echo "❌ $${HOME}/.pi/agent/AGENTS.md already exists with different contents"; \
+		echo "Error: $${HOME}/.pi/agent/AGENTS.md already exists with different contents"; \
 		echo "   Move it away manually or run make sync-agents-md-force"; \
 		exit 1; \
 	fi; \
@@ -129,36 +144,30 @@ sync-agents-md:
 # editing AGENTS.personal.md when ~/.pi/agent/AGENTS.md is already a real file.
 # Unlike sync-pi-force, this touches only the instructions, not settings.json.
 sync-agents-md-force:
-	@echo "📝 Regenerating canonical AGENTS.md (force)..."
+	@echo "Regenerating canonical AGENTS.md (force)..."
 	@mkdir -p ~/.pi/agent
 	@rm -f ~/.pi/agent/AGENTS.md
 	@$(MAKE) sync-agents-md
 
 # Install Claude Code configuration
 # CLAUDE.md is a symlink to the canonical ~/.pi/agent/AGENTS.md.
-sync-claude: sync-agents-md sync-skills
-	@echo "🤖 Installing Claude Code configuration..."
+sync-claude: sync-agents-md sync-skills require-jq
+	@echo "Installing Claude Code configuration..."
 	@set -e; \
 	mkdir -p ~/.claude; \
-	command -v jq >/dev/null 2>&1 || { echo "❌ jq is not installed. Please install it first."; exit 1; }; \
 	tmp_settings="$$(mktemp /tmp/claude-settings.XXXXXX)"; \
-	cleanup() { rm -f "$$tmp_settings"; }; \
-	trap cleanup EXIT; \
+	trap 'rm -f "$$tmp_settings"' EXIT; \
 	$(call build_settings,$$tmp_settings); \
-	if [ -e "$${HOME}/.claude/settings.json" ] && ! cmp -s "$$tmp_settings" "$${HOME}/.claude/settings.json"; then \
-		echo "❌ $${HOME}/.claude/settings.json already exists with different contents"; \
-		echo "   Move it away manually or run make sync-claude-force"; \
-		exit 1; \
-	fi; \
+	$(call assert_no_conflict,$${HOME}/.claude/settings.json,$$tmp_settings,sync-claude-force); \
 	$(call ensure_safe_symlink,$${HOME}/.claude/CLAUDE.md,$${HOME}/.pi/agent/AGENTS.md,sync-claude-force); \
 	$(call ensure_safe_symlink,$${HOME}/.claude/agents,$(REPO_ROOT)/claude/.claude/agents,sync-claude-force); \
 	mv "$$tmp_settings" "$${HOME}/.claude/settings.json"; \
 	ln -snf "$${HOME}/.pi/agent/AGENTS.md" "$${HOME}/.claude/CLAUDE.md"; \
 	ln -snf "$(REPO_ROOT)/claude/.claude/agents" "$${HOME}/.claude/agents"
-	@echo "✅ Claude Code configuration installed"
+	@echo "Claude Code configuration installed"
 
 sync-claude-force:
-	@echo "🤖 Installing Claude Code configuration (force)..."
+	@echo "Installing Claude Code configuration (force)..."
 	@mkdir -p ~/.claude
 	@rm -rf ~/.claude/agents
 	@rm -f ~/.claude/CLAUDE.md ~/.claude/settings.json
@@ -166,7 +175,7 @@ sync-claude-force:
 
 # Install ccstatusline configuration
 sync-ccstatusline: require-stow
-	@echo "📊 Installing ccstatusline configuration..."
+	@echo "Installing ccstatusline configuration..."
 	@mkdir -p ~/.config/ccstatusline
 	@if [ -f ~/.config/ccstatusline/settings.json ] && [ ! -L ~/.config/ccstatusline/settings.json ]; then \
 		backup_file="$$HOME/.config/ccstatusline/settings.json.bak.$$(date +%Y%m%d%H%M%S)"; \
@@ -174,13 +183,13 @@ sync-ccstatusline: require-stow
 		mv ~/.config/ccstatusline/settings.json "$$backup_file"; \
 	fi
 	stow -t ~ ccstatusline
-	@echo "✅ ccstatusline configuration installed"
+	@echo "ccstatusline configuration installed"
 
 # Install published skills with the pinned skills CLI into the universal
 # ~/.agents/skills directory. OpenCode and pi read this path natively; the CLI
 # creates one symlink per managed skill under ~/.claude/skills for Claude Code.
 sync-skills: require-npx require-yq
-	@echo "🧩 Installing shared skills..."
+	@echo "Installing shared skills..."
 	@mkdir -p ~/.agents/skills
 	@if [ -L ~/.claude/skills ]; then \
 		current="$$(readlink ~/.claude/skills)"; \
@@ -188,7 +197,7 @@ sync-skills: require-npx require-yq
 			rm -f ~/.claude/skills; \
 			echo "  Migrated Claude Code skills to per-skill links"; \
 		else \
-			echo "❌ ~/.claude/skills points to $$current"; \
+			echo "Error: ~/.claude/skills points to $$current"; \
 			echo "   Remove it manually before installing CLI-managed per-skill links"; \
 			exit 1; \
 		fi; \
@@ -201,84 +210,51 @@ sync-skills: require-npx require-yq
 		for skill in $$skills; do skill_args="$$skill_args --skill $$skill"; done; \
 		$(SKILLS_CLI) add "$$repo" $$skill_args --global --agent opencode --agent claude-code --yes </dev/null; \
 	done <<< "$$entries"
-	@echo "✅ Skills installed to ~/.agents/skills/"
+	@echo "Skills installed to ~/.agents/skills/"
 
 # Install OpenCode configuration (agents + opencode.json from jsonnet)
 # Global instructions come from ~/.config/opencode/AGENTS.md → canonical pi file.
-sync-opencode: sync-agents-md
-	@echo "🤖 Installing OpenCode configuration..."
+sync-opencode: sync-agents-md require-jsonnet
+	@echo "Installing OpenCode configuration..."
 	@mkdir -p ~/.config/opencode
-	@command -v jsonnet >/dev/null 2>&1 || { echo "❌ jsonnet is not installed. Please install it first."; exit 1; }
 	@set -e; \
 	echo "  Building opencode.json (env=$(OPENCODE_ENV))..."; \
 	tmp_opencode="$$(mktemp /tmp/opencode-json.XXXXXX)"; \
-	cleanup() { rm -f "$$tmp_opencode"; }; \
-	trap cleanup EXIT; \
+	trap 'rm -f "$$tmp_opencode"' EXIT; \
 	jsonnet $(OPENCODE_JPATH) --tla-str env=$(OPENCODE_ENV) "$(REPO_ROOT)/jsonnet/opencode.jsonnet" > "$$tmp_opencode"; \
-	if [ -e "$${HOME}/.config/opencode/opencode.json" ] && ! cmp -s "$$tmp_opencode" "$${HOME}/.config/opencode/opencode.json"; then \
-		echo "❌ ~/.config/opencode/opencode.json already exists with different contents"; \
-		echo "   Move it away manually or run make sync-opencode-force"; \
-		exit 1; \
-	fi; \
+	$(call assert_no_conflict,$${HOME}/.config/opencode/opencode.json,$$tmp_opencode,sync-opencode-force); \
 	$(call ensure_safe_symlink,$${HOME}/.config/opencode/agents,$(REPO_ROOT)/opencode/agents,sync-opencode-force); \
 	$(call ensure_safe_symlink,$${HOME}/.config/opencode/AGENTS.md,$${HOME}/.pi/agent/AGENTS.md,sync-opencode-force); \
 	mv "$$tmp_opencode" "$${HOME}/.config/opencode/opencode.json"; \
 	ln -snf "$(REPO_ROOT)/opencode/agents" "$${HOME}/.config/opencode/agents"; \
 	ln -snf "$${HOME}/.pi/agent/AGENTS.md" "$${HOME}/.config/opencode/AGENTS.md"
-	@echo "✅ OpenCode configuration installed (env=$(OPENCODE_ENV))"
+	@echo "OpenCode configuration installed (env=$(OPENCODE_ENV))"
 
 sync-opencode-force:
-	@echo "🤖 Installing OpenCode configuration (force)..."
+	@echo "Installing OpenCode configuration (force)..."
 	@mkdir -p ~/.config/opencode
 	@rm -f ~/.config/opencode/opencode.json ~/.config/opencode/AGENTS.md
 	@rm -rf ~/.config/opencode/agents
 	@$(MAKE) sync-opencode
 
 # Install pi configuration (owns canonical AGENTS.md; packages injected into settings.json)
-sync-pi: sync-agents-md
-	@echo "🤖 Installing pi configuration..."
+sync-pi: sync-agents-md require-jq
+	@echo "Installing pi configuration..."
 	@mkdir -p ~/.pi/agent
-	@command -v jq >/dev/null 2>&1 || { echo "❌ jq is not installed. Please install it first."; exit 1; }
-	@if [ -f ~/.pi/agent/settings.json ]; then \
-		existing_packages=$$(jq '.packages' ~/.pi/agent/settings.json); \
-		incoming_packages=$$(jq '.' "$(REPO_ROOT)/pi/packages.json"); \
-		if [ "$$existing_packages" != "$$incoming_packages" ]; then \
-			echo ""; \
-			echo "  📦 Package diff (current → incoming):"; \
-			diff <(echo "$$existing_packages" | jq -S '.' 2>/dev/null) \
-			     <(echo "$$incoming_packages" | jq -S '.') \
-			     --label "current ~/.pi/agent/settings.json" \
-			     --label "incoming pi/packages.json" || true; \
-			echo ""; \
-			read -p "  Overwrite packages? [y/N] " -n 1 -r; \
-			echo ""; \
-			if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
-				echo "  Injecting packages into ~/.pi/agent/settings.json..."; \
-				jq '.packages = $$pkgs[0]' --slurpfile pkgs "$(REPO_ROOT)/pi/packages.json" ~/.pi/agent/settings.json > ~/.pi/agent/settings.json.tmp && \
-				mv ~/.pi/agent/settings.json.tmp ~/.pi/agent/settings.json; \
-			else \
-				echo "  ⏭️  Skipped package injection."; \
-			fi; \
-		else \
-			echo "  ✅ Packages already up to date."; \
-		fi; \
-	else \
-		echo "  Creating ~/.pi/agent/settings.json with packages..."; \
-		jq -n '{packages: $$pkgs[0]}' --slurpfile pkgs "$(REPO_ROOT)/pi/packages.json" > ~/.pi/agent/settings.json; \
-	fi
-	@echo "✅ pi configuration installed"
+	@bash "$(REPO_ROOT)/scripts/sync-pi-packages.sh" "$${HOME}/.pi/agent/settings.json" "$(REPO_ROOT)/pi/packages.json"
+	@echo "pi configuration installed"
 	@echo "  ~/.pi/agent/AGENTS.md (canonical instructions)"
 	@echo "  ~/.pi/agent/settings.json (packages injected)"
 
 sync-pi-force:
-	@echo "🤖 Installing pi configuration (force)..."
+	@echo "Installing pi configuration (force)..."
 	@mkdir -p ~/.pi/agent
 	@rm -f ~/.pi/agent/AGENTS.md
 	@$(MAKE) sync-pi
 
 # Remove all symlinks and generated files (with confirmation)
 clean:
-	@echo "⚠️  WARNING: This will remove all agent-config configurations!"
+	@echo "WARNING: This will remove all agent-config configurations!"
 	@echo "  - ~/.claude/ (CLAUDE.md, settings.json, agents)"
 	@echo "  - ~/.pi/agent/AGENTS.md (canonical instructions)"
 	@echo "  - ~/.config/opencode/opencode.json"
@@ -292,74 +268,70 @@ clean:
 	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
 		$(MAKE) clean-force; \
 	else \
-		echo "❌ Clean cancelled"; \
+		echo "Clean cancelled"; \
 	fi
 
 # Force clean without confirmation (used by clean target)
 clean-force:
-	@echo "🧹 Removing all configurations..."
+	@echo "Removing all configurations..."
 	@$(MAKE) clean-claude
 	@$(MAKE) clean-skills
 	@$(MAKE) clean-opencode
 	@$(MAKE) clean-pi
-	@echo "✅ All configurations removed"
+	@echo "All configurations removed"
 
-clean-claude:
-	@echo "🧹 Removing Claude Code configuration..."
+clean-claude: require-jq
+	@echo "Removing Claude Code configuration..."
 	@set -e; \
 	mkdir -p ~/.claude; \
-	command -v jq >/dev/null 2>&1 || { echo "❌ jq is not installed. Please install it first."; exit 1; }; \
 	tmp_settings="$$(mktemp /tmp/claude-settings.XXXXXX)"; \
-	cleanup() { rm -f "$$tmp_settings"; }; \
-	trap cleanup EXIT; \
+	trap 'rm -f "$$tmp_settings"' EXIT; \
 	$(call build_settings,$$tmp_settings); \
 	$(call remove_managed_file,$${HOME}/.claude/settings.json,$$tmp_settings)
 	@$(call remove_managed_path,$${HOME}/.claude/CLAUDE.md,$${HOME}/.pi/agent/AGENTS.md)
 	@$(call remove_managed_path,$${HOME}/.claude/agents,$(REPO_ROOT)/claude/.claude/agents)
-	@echo "✅ Claude Code configuration removed"
+	@echo "Claude Code configuration removed"
 
 clean-opencode:
-	@echo "🧹 Removing OpenCode configuration..."
+	@echo "Removing OpenCode configuration..."
 	@set -e; \
 	if command -v jsonnet >/dev/null 2>&1; then \
 		tmp_opencode="$$(mktemp /tmp/opencode-json.XXXXXX)"; \
-		cleanup() { rm -f "$$tmp_opencode"; }; \
-		trap cleanup EXIT; \
+		trap 'rm -f "$$tmp_opencode"' EXIT; \
 		jsonnet $(OPENCODE_JPATH) --tla-str env=$(OPENCODE_ENV) "$(REPO_ROOT)/jsonnet/opencode.jsonnet" > "$$tmp_opencode"; \
 		$(call remove_managed_file,$${HOME}/.config/opencode/opencode.json,$$tmp_opencode); \
 	else \
-		echo "  ⚠️  jsonnet not found, skipping opencode.json cleanup"; \
+		echo "  Warning: jsonnet not found, skipping opencode.json cleanup"; \
 	fi
 	@$(call remove_managed_path,$${HOME}/.config/opencode/agents,$(REPO_ROOT)/opencode/agents)
 	@$(call remove_managed_path,$${HOME}/.config/opencode/AGENTS.md,$${HOME}/.pi/agent/AGENTS.md)
-	@echo "✅ OpenCode configuration removed"
+	@echo "OpenCode configuration removed"
 
 clean-pi:
-	@echo "🧹 Removing pi configuration..."
+	@echo "Removing pi configuration..."
 	@set -e; \
 	tmp_agents="$$(mktemp /tmp/agents-md.XXXXXX)"; \
-	cleanup() { rm -f "$$tmp_agents"; }; \
-	trap cleanup EXIT; \
+	trap 'rm -f "$$tmp_agents"' EXIT; \
 	$(call build_agents_md,$$tmp_agents); \
 	$(call remove_managed_file,$${HOME}/.pi/agent/AGENTS.md,$$tmp_agents)
 	@echo "  (settings.json left untouched — it is your personal file)"
-	@echo "✅ pi configuration removed"
+	@echo "pi configuration removed"
 
 clean-skills: require-yq
-	@echo "🧹 Removing shared skills..."
+	@echo "Removing shared skills..."
 	@if command -v npx >/dev/null 2>&1; then \
 		set -e; \
 		skill_names="$$($(SKILLS_MANIFEST_NAMES))"; \
 		$(SKILLS_CLI) remove $$skill_names --global --agent opencode --agent universal --agent claude-code --yes; \
 	else \
-		echo "  ⚠️  npx not found, skipping published skill removal"; \
+		echo "  Warning: npx not found, skipping published skill removal"; \
 	fi
 	@rmdir ~/.agents/skills ~/.agents 2>/dev/null || true
-	@echo "✅ Shared skills removed"
+	@echo "Shared skills removed"
 
 # Test commands
 test: check-syntax test-safety test-sync-smoke
-	@echo "✅ All checks passed!"
+	@echo "All checks passed!"
 
 test-safety:
 	@bash "./test_makefile_safety.sh"
@@ -369,30 +341,30 @@ test-sync-smoke:
 
 # Check syntax of configuration files
 check-syntax:
-	@echo "🔍 Checking syntax..."
+	@echo "Checking syntax..."
 	@echo "Checking Jsonnet files..."
 	@if command -v jsonnet >/dev/null 2>&1; then \
 		for file in $$(find ./jsonnet -name "*.jsonnet" -o -name "*.libsonnet" 2>/dev/null | grep -v '_work'); do \
 			echo "  Checking $$file"; \
-			jsonnet --tla-str env=personal "$$file" >/dev/null 2>&1 || jsonnet "$$file" >/dev/null 2>&1 || { echo "❌ Syntax error in $$file"; exit 1; }; \
+			jsonnet --tla-str env=personal "$$file" >/dev/null 2>&1 || jsonnet "$$file" >/dev/null 2>&1 || { echo "Error: Syntax error in $$file"; exit 1; }; \
 		done; \
 	else \
-		echo "  ⚠️  jsonnet not found, skipping Jsonnet checks"; \
+		echo "  Warning: jsonnet not found, skipping Jsonnet checks"; \
 	fi
 	@echo "Checking JSON files..."
 	@for file in claude/claude_settings.json.template pi/packages.json ccstatusline/.config/ccstatusline/settings.json; do \
 		if [ -f "$$file" ]; then \
 			echo "  Checking $$file"; \
-			python3 -m json.tool "$$file" >/dev/null || { echo "❌ Invalid JSON in $$file"; exit 1; }; \
+			python3 -m json.tool "$$file" >/dev/null || { echo "Error: Invalid JSON in $$file"; exit 1; }; \
 		fi; \
 	done
 	@echo "Checking YAML files..."
 	@if command -v yq >/dev/null 2>&1; then \
 		echo "  Checking skills.yaml"; \
-		yq '.' skills.yaml >/dev/null || { echo "❌ Invalid YAML in skills.yaml"; exit 1; }; \
+		yq '.' skills.yaml >/dev/null || { echo "Error: Invalid YAML in skills.yaml"; exit 1; }; \
 	else \
-		echo "  ⚠️  yq not found, skipping YAML checks"; \
+		echo "  Warning: yq not found, skipping YAML checks"; \
 	fi
-	@echo "✅ Syntax check passed"
+	@echo "Syntax check passed"
 
-.PHONY: all require-stow require-npx require-yq clean clean-force clean-claude clean-skills clean-opencode clean-pi sync sync-agents-md sync-agents-md-force sync-claude sync-claude-force sync-ccstatusline sync-skills sync-opencode sync-opencode-force sync-pi sync-pi-force test test-safety test-sync-smoke check-syntax
+.PHONY: all require-stow require-npx require-yq require-jq require-jsonnet clean clean-force clean-claude clean-skills clean-opencode clean-pi sync sync-agents-md sync-agents-md-force sync-claude sync-claude-force sync-ccstatusline sync-skills sync-opencode sync-opencode-force sync-pi sync-pi-force test test-safety test-sync-smoke check-syntax
