@@ -330,9 +330,9 @@ the current template without optional instructions, then compare it with the liv
 file:
 
 ```bash
-# AGENT_NAME comes from agents-md/AGENTS.personal.mk via make; export the same
-# value here before invoking the renderer directly.
-export AGENT_NAME=YOUR_NAME
+# Enter the AGENT_NAME value configured in agents-md/AGENTS.personal.mk.
+read -r -p "AGENT_NAME: " AGENT_NAME
+export AGENT_NAME
 scripts/render-agents-md.sh agents-md/AGENTS.base.md /dev/null \
   > /tmp/AGENTS.base.rendered.md
 diff -u /tmp/AGENTS.base.rendered.md ~/.claude/CLAUDE.md

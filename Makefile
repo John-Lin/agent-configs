@@ -171,7 +171,7 @@ sync-claude: sync-agents-md sync-skills
 	ln -snf "$(REPO_ROOT)/claude/.claude/agents" "$${HOME}/.claude/agents"
 	@echo "✅ Claude Code configuration installed"
 
-sync-claude-force:
+sync-claude-force: sync-agents-md-force
 	@echo "🤖 Installing Claude Code configuration (force)..."
 	@mkdir -p ~/.claude
 	@rm -rf ~/.claude/agents
@@ -241,7 +241,7 @@ sync-opencode: sync-agents-md
 	ln -snf "$${HOME}/.pi/agent/AGENTS.md" "$${HOME}/.config/opencode/AGENTS.md"
 	@echo "✅ OpenCode configuration installed (env=$(OPENCODE_ENV))"
 
-sync-opencode-force:
+sync-opencode-force: sync-agents-md-force
 	@echo "🤖 Installing OpenCode configuration (force)..."
 	@mkdir -p ~/.config/opencode
 	@rm -f ~/.config/opencode/opencode.json ~/.config/opencode/AGENTS.md
@@ -284,10 +284,8 @@ sync-pi: sync-agents-md
 	@echo "  ~/.pi/agent/AGENTS.md (canonical instructions)"
 	@echo "  ~/.pi/agent/settings.json (packages injected)"
 
-sync-pi-force:
+sync-pi-force: sync-agents-md-force
 	@echo "🤖 Installing pi configuration (force)..."
-	@mkdir -p ~/.pi/agent
-	@rm -f ~/.pi/agent/AGENTS.md
 	@$(MAKE) sync-pi
 
 # Remove all symlinks and generated files (with confirmation)

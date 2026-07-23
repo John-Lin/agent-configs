@@ -246,6 +246,14 @@ test_agents_template_uses_personal_placeholders() {
 	assert_not_contains "$template" 'Jesse'
 }
 
+test_upstream_template_is_excluded_from_whitespace_hook() {
+	assert_contains "$REPO_ROOT/prek.toml" '{ id = "trailing-whitespace", exclude = "^agents-md/AGENTS\\.base\\.md$" },'
+}
+
+test_migration_recovery_requires_an_actual_name() {
+	assert_not_contains "$REPO_ROOT/MIGRATION.md" 'export AGENT_NAME=YOUR_NAME'
+}
+
 test_agents_renderer_rejects_example_name() {
 	local template
 	template=$(mktemp /tmp/agents-template.XXXXXX)
@@ -342,6 +350,38 @@ test_sync_agents_md_rejects_example_name() {
 	assert_contains "$TEST_OUTPUT" 'AGENT_NAME must be set to your name'
 }
 
+test_high_level_force_targets_preserve_files_when_name_is_invalid() {
+	local home_dir target watched expected
+	home_dir=$(mktemp -d)
+	trap '[ -n "${home_dir-}" ] && rm -rf "$home_dir"' RETURN
+
+	mkdir -p "$home_dir/.claude" "$home_dir/.config/opencode" "$home_dir/.pi/agent"
+	printf 'keep claude\n' >"$home_dir/.claude/CLAUDE.md"
+	printf 'keep opencode\n' >"$home_dir/.config/opencode/AGENTS.md"
+	printf 'keep pi\n' >"$home_dir/.pi/agent/AGENTS.md"
+
+	for target in sync-claude-force sync-opencode-force sync-pi-force; do
+		case "$target" in
+			sync-claude-force) watched="$home_dir/.claude/CLAUDE.md" ;;
+			sync-opencode-force) watched="$home_dir/.config/opencode/AGENTS.md" ;;
+			sync-pi-force) watched="$home_dir/.pi/agent/AGENTS.md" ;;
+		esac
+		expected=$(mktemp /tmp/agents-force.XXXXXX)
+		cp "$watched" "$expected"
+
+		if HOME="$home_dir" make "$target" AGENT_NAME= >"$TEST_OUTPUT" 2>&1; then
+			printf 'Expected %s to fail without AGENT_NAME\n' "$target" >&2
+			exit 1
+		fi
+		assert_contains "$TEST_OUTPUT" 'AGENT_NAME is required'
+		if ! cmp -s "$watched" "$expected"; then
+			printf 'Expected %s to preserve %s when rendering fails\n' "$target" "$watched" >&2
+			exit 1
+		fi
+		rm -f "$expected"
+	done
+}
+
 test_sync_agents_md_requires_personal_name() {
 	local home_dir canonical expected
 	home_dir=$(mktemp -d)
@@ -433,12 +473,15 @@ main() {
 	test_sync_agents_md_preserves_existing_canonical
 	test_sync_agents_md_force_overwrites_canonical
 	test_agents_template_uses_personal_placeholders
+	test_upstream_template_is_excluded_from_whitespace_hook
+	test_migration_recovery_requires_an_actual_name
 	test_agents_renderer_rejects_example_name
 	test_agents_renderer_requires_one_personal_placeholder
 	test_agents_renderer_interpolates_name_and_personal_instructions
 	test_agents_renderer_accepts_no_personal_instructions
 	test_sync_agents_md_renders_personal_name
 	test_sync_agents_md_rejects_example_name
+	test_high_level_force_targets_preserve_files_when_name_is_invalid
 	test_sync_agents_md_requires_personal_name
 	test_sync_pi_preserves_existing_canonical
 	test_sync_pi_force_overwrites_canonical

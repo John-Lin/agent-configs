@@ -4,5 +4,5 @@ rev = "v6.0.0"
 hooks = [
   { id = "check-yaml" },
   { id = "end-of-file-fixer" },
-  { id = "trailing-whitespace" },
+  { id = "trailing-whitespace", exclude = "^agents-md/AGENTS\\.base\\.md$" },
 ]

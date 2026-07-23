@@ -147,5 +147,3 @@ All subagents under `agents/` are sourced from [wshobson/agents](https://github.
 | `typescript-pro.md`       | `plugins/javascript-typescript/agents/typescript-pro.md` |
 
 Note: the `model:` field is overridden locally (not always matching upstream) — see each file's frontmatter.
-
-
