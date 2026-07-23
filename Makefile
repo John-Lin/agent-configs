@@ -235,37 +235,10 @@ sync-opencode-force:
 	@$(MAKE) sync-opencode
 
 # Install pi configuration (owns canonical AGENTS.md; packages injected into settings.json)
-sync-pi: sync-agents-md
+sync-pi: sync-agents-md require-jq
 	@echo "🤖 Installing pi configuration..."
 	@mkdir -p ~/.pi/agent
-	@command -v jq >/dev/null 2>&1 || { echo "❌ jq is not installed. Please install it first."; exit 1; }
-	@if [ -f ~/.pi/agent/settings.json ]; then \
-		existing_packages=$$(jq '.packages' ~/.pi/agent/settings.json); \
-		incoming_packages=$$(jq '.' "$(REPO_ROOT)/pi/packages.json"); \
-		if [ "$$existing_packages" != "$$incoming_packages" ]; then \
-			echo ""; \
-			echo "  📦 Package diff (current → incoming):"; \
-			diff <(echo "$$existing_packages" | jq -S '.' 2>/dev/null) \
-			     <(echo "$$incoming_packages" | jq -S '.') \
-			     --label "current ~/.pi/agent/settings.json" \
-			     --label "incoming pi/packages.json" || true; \
-			echo ""; \
-			read -p "  Overwrite packages? [y/N] " -n 1 -r; \
-			echo ""; \
-			if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
-				echo "  Injecting packages into ~/.pi/agent/settings.json..."; \
-				jq '.packages = $$pkgs[0]' --slurpfile pkgs "$(REPO_ROOT)/pi/packages.json" ~/.pi/agent/settings.json > ~/.pi/agent/settings.json.tmp && \
-				mv ~/.pi/agent/settings.json.tmp ~/.pi/agent/settings.json; \
-			else \
-				echo "  ⏭️  Skipped package injection."; \
-			fi; \
-		else \
-			echo "  ✅ Packages already up to date."; \
-		fi; \
-	else \
-		echo "  Creating ~/.pi/agent/settings.json with packages..."; \
-		jq -n '{packages: $$pkgs[0]}' --slurpfile pkgs "$(REPO_ROOT)/pi/packages.json" > ~/.pi/agent/settings.json; \
-	fi
+	@bash "$(REPO_ROOT)/scripts/sync-pi-packages.sh" "$${HOME}/.pi/agent/settings.json" "$(REPO_ROOT)/pi/packages.json"
 	@echo "✅ pi configuration installed"
 	@echo "  ~/.pi/agent/AGENTS.md (canonical instructions)"
 	@echo "  ~/.pi/agent/settings.json (packages injected)"
