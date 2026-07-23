@@ -98,6 +98,12 @@ require-npx:
 require-yq:
 	@command -v yq >/dev/null 2>&1 || { echo "❌ yq is not installed (brew install yq). Required to read skills.yaml."; exit 1; }
 
+require-jq:
+	@command -v jq >/dev/null 2>&1 || { echo "❌ jq is not installed. Please install it first."; exit 1; }
+
+require-jsonnet:
+	@command -v jsonnet >/dev/null 2>&1 || { echo "❌ jsonnet is not installed. Please install it first."; exit 1; }
+
 # Install all configurations (removed automatic installation)
 sync:
 	@echo "⚠️  Please specify which configuration to install:"
@@ -136,11 +142,10 @@ sync-agents-md-force:
 
 # Install Claude Code configuration
 # CLAUDE.md is a symlink to the canonical ~/.pi/agent/AGENTS.md.
-sync-claude: sync-agents-md sync-skills
+sync-claude: sync-agents-md sync-skills require-jq
 	@echo "🤖 Installing Claude Code configuration..."
 	@set -e; \
 	mkdir -p ~/.claude; \
-	command -v jq >/dev/null 2>&1 || { echo "❌ jq is not installed. Please install it first."; exit 1; }; \
 	tmp_settings="$$(mktemp /tmp/claude-settings.XXXXXX)"; \
 	cleanup() { rm -f "$$tmp_settings"; }; \
 	trap cleanup EXIT; \
@@ -205,10 +210,9 @@ sync-skills: require-npx require-yq
 
 # Install OpenCode configuration (agents + opencode.json from jsonnet)
 # Global instructions come from ~/.config/opencode/AGENTS.md → canonical pi file.
-sync-opencode: sync-agents-md
+sync-opencode: sync-agents-md require-jsonnet
 	@echo "🤖 Installing OpenCode configuration..."
 	@mkdir -p ~/.config/opencode
-	@command -v jsonnet >/dev/null 2>&1 || { echo "❌ jsonnet is not installed. Please install it first."; exit 1; }
 	@set -e; \
 	echo "  Building opencode.json (env=$(OPENCODE_ENV))..."; \
 	tmp_opencode="$$(mktemp /tmp/opencode-json.XXXXXX)"; \
@@ -277,11 +281,10 @@ clean-force:
 	@$(MAKE) clean-pi
 	@echo "✅ All configurations removed"
 
-clean-claude:
+clean-claude: require-jq
 	@echo "🧹 Removing Claude Code configuration..."
 	@set -e; \
 	mkdir -p ~/.claude; \
-	command -v jq >/dev/null 2>&1 || { echo "❌ jq is not installed. Please install it first."; exit 1; }; \
 	tmp_settings="$$(mktemp /tmp/claude-settings.XXXXXX)"; \
 	cleanup() { rm -f "$$tmp_settings"; }; \
 	trap cleanup EXIT; \
@@ -368,4 +371,4 @@ check-syntax:
 	fi
 	@echo "✅ Syntax check passed"
 
-.PHONY: all require-stow require-npx require-yq clean clean-force clean-claude clean-skills clean-opencode clean-pi sync sync-agents-md sync-agents-md-force sync-claude sync-claude-force sync-ccstatusline sync-skills sync-opencode sync-opencode-force sync-pi sync-pi-force test test-safety test-sync-smoke check-syntax
+.PHONY: all require-stow require-npx require-yq require-jq require-jsonnet clean clean-force clean-claude clean-skills clean-opencode clean-pi sync sync-agents-md sync-agents-md-force sync-claude sync-claude-force sync-ccstatusline sync-skills sync-opencode sync-opencode-force sync-pi sync-pi-force test test-safety test-sync-smoke check-syntax
