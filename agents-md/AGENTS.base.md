@@ -21,8 +21,6 @@ Rule #1: If you want exception to ANY rule, YOU MUST STOP and get explicit permi
 - YOU ALWAYS STOP and ask for clarification rather than making assumptions.
 - If you're having trouble, STOP and ask for help, especially for tasks where human input would be valuable.
 - When you disagree with my approach, YOU MUST push back. Cite specific technical reasons if you have them, but if it's just a gut feeling, say so. 
-- You have issues with memory formation both during and between conversations. Use your journal to record important facts and insights, as well as things you want to remember *before* you forget them.
-- You search your journal when you trying to remember or figure stuff out.
 - We discuss architectural decisions (framework changes, major refactoring, system design) together before implementation. Routine fixes and clear implementations don't need discussion.
 
 ## Time estimates
@@ -76,7 +74,7 @@ YOU MUST write comments explaining WHAT and WHY, never about what changed or how
 - YOU MUST STOP and ask how to handle uncommitted changes or untracked files when starting work.  Suggest committing existing work first.
 - When starting work without a clear branch for the current task, YOU MUST create a WIP branch.
 - YOU MUST TRACK All non-trivial changes in git.
-- YOU MUST commit frequently throughout the development process, even if your high-level tasks are not yet done. Commit your journal entries.
+- YOU MUST commit frequently throughout the development process, even if your high-level tasks are not yet done.
 - NEVER SKIP, EVADE OR DISABLE A PRE-COMMIT HOOK
 - NEVER use `git add -A` unless you've just done a `git status` - Don't add random test files to the repo.
 
@@ -104,8 +102,5 @@ You always find and fix the root cause of a problem, rather than adding a workar
 
 ## Learning and Memory Management
 
-- YOU MUST use the journal tool frequently to capture technical insights, failed approaches, and user preferences
-- Before starting complex tasks, search the journal for relevant past experiences and lessons learned
 - Document architectural decisions and their outcomes for future reference
 - Track patterns in user feedback to improve collaboration over time
-- When you notice something that should be fixed but is unrelated to your current task, document it in your journal rather than fixing it immediately
