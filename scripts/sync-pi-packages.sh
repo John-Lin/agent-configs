@@ -24,12 +24,12 @@ existing_packages=$(jq '.packages' "$settings_file")
 incoming_packages=$(jq '.' "$packages_file")
 
 if [ "$existing_packages" = "$incoming_packages" ]; then
-	echo "  ✅ Packages already up to date."
+	echo "  Packages already up to date."
 	exit 0
 fi
 
 echo ""
-echo "  📦 Package diff (current → incoming):"
+echo "  Package diff (current → incoming):"
 diff <(echo "$existing_packages" | jq -S '.' 2>/dev/null) \
      <(echo "$incoming_packages" | jq -S '.') \
      --label "current $settings_file" \
@@ -42,5 +42,5 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
 	jq '.packages = $pkgs[0]' --slurpfile pkgs "$packages_file" "$settings_file" > "$settings_file.tmp"
 	mv "$settings_file.tmp" "$settings_file"
 else
-	echo "  ⏭️  Skipped package injection."
+	echo "  Skipped package injection."
 fi
