@@ -1,0 +1,7 @@
+# Copy this file to skills-int.yaml to install internal (non-public) skills.
+# Same format as skills.yaml: key is the git repo/URL, value is the list of
+# skills to install globally. skills-int.yaml is gitignored and merged into
+# skills.yaml automatically by `make sync-skills`.
+
+# https://git.example.com/team/skills.git:
+#   - some-internal-skill

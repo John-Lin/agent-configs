@@ -107,7 +107,10 @@ main() {
 
 	mkdir -p "$home_dir/.agents/skills" "$home_dir/.claude"
 	ln -s "$home_dir/.agents/skills" "$home_dir/.claude/skills"
-	run_make "$home_dir" sync-claude
+	# Force the public manifest only: internal sources (skills-int.yaml) may need
+	# VPN/auth, and an empty SKILLS_MANIFEST_INT also exercises the
+	# missing-internal-manifest path, which must not break sync-skills.
+	run_make "$home_dir" sync-claude SKILLS_MANIFEST_INT=
 	# Published skills are installed by the pinned skills CLI into the universal
 	# directory. Every skill listed in skills.yaml must be present.
 	skill_entries="$(manifest_entries)"
