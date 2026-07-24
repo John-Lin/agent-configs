@@ -1,6 +1,9 @@
 # Shared skills manifest — the single source of truth for `make sync-skills`,
 # `make clean-skills`, and the smoke test assertions.
 # Key: GitHub repo. Value: skills to install globally from that repo.
+#
+# Internal (non-public) sources live in skills-int.yaml, which is gitignored and
+# merged in automatically when present.
 
 cocoon-ai/architecture-diagram-generator:
   - architecture-diagram

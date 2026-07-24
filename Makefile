@@ -7,13 +7,16 @@ SHELL := /bin/bash
 REPO_ROOT := $(abspath $(CURDIR))
 SKILLS_CLI := npx --yes skills@1.5.19
 
-# skills.yaml is the single source of truth for managed skills; the smoke test
-# derives its assertions from the same file.
+# skills.yaml is the single source of truth for managed public skills; the smoke
+# test derives its assertions from the same file. skills-int.yaml holds internal
+# (non-public) sources, is gitignored, and is merged in when present.
 SKILLS_MANIFEST := $(REPO_ROOT)/skills.yaml
-# Print the manifest as lines of "<repo> <skill> [<skill>...]"
-SKILLS_MANIFEST_ENTRIES := yq -r 'to_entries[] | .key + " " + (.value | join(" "))' "$(SKILLS_MANIFEST)"
-# Print every managed skill name on one line
-SKILLS_MANIFEST_NAMES := yq -r '[.[][]] | join(" ")' "$(SKILLS_MANIFEST)"
+SKILLS_MANIFEST_INT := $(REPO_ROOT)/skills-int.yaml
+SKILLS_MANIFEST_FILES := $(SKILLS_MANIFEST) $(wildcard $(SKILLS_MANIFEST_INT))
+# Merge every manifest (combining skill lists for repos shared across files).
+SKILLS_MANIFEST_MERGE := . as $$item ireduce ({}; . *+ $$item)
+# Print every managed skill name on one line (used by clean-skills).
+SKILLS_MANIFEST_NAMES := yq ea -r '$(SKILLS_MANIFEST_MERGE) | [.[][]] | join(" ")' $(SKILLS_MANIFEST_FILES)
 
 # Auto-detect work environment via OPENCODE_WORK_CONFIG env var (path to external config dir)
 OPENCODE_ENV := $(if $(OPENCODE_WORK_CONFIG),work,personal)
@@ -189,28 +192,7 @@ sync-ccstatusline: require-stow
 # ~/.agents/skills directory. OpenCode and pi read this path natively; the CLI
 # creates one symlink per managed skill under ~/.claude/skills for Claude Code.
 sync-skills: require-npx require-yq
-	@echo "Installing shared skills..."
-	@mkdir -p ~/.agents/skills
-	@if [ -L ~/.claude/skills ]; then \
-		current="$$(readlink ~/.claude/skills)"; \
-		if [ "$$current" = "$${HOME}/.agents/skills" ]; then \
-			rm -f ~/.claude/skills; \
-			echo "  Migrated Claude Code skills to per-skill links"; \
-		else \
-			echo "Error: ~/.claude/skills points to $$current"; \
-			echo "   Remove it manually before installing CLI-managed per-skill links"; \
-			exit 1; \
-		fi; \
-	fi
-	@set -e; \
-	entries="$$($(SKILLS_MANIFEST_ENTRIES))"; \
-	while read -r repo skills; do \
-		echo "  Installing from $$repo: $$skills"; \
-		skill_args=""; \
-		for skill in $$skills; do skill_args="$$skill_args --skill $$skill"; done; \
-		$(SKILLS_CLI) add "$$repo" $$skill_args --global --agent opencode --agent claude-code --yes </dev/null; \
-	done <<< "$$entries"
-	@echo "Skills installed to ~/.agents/skills/"
+	@SKILLS_CLI="$(SKILLS_CLI)" bash "$(REPO_ROOT)/scripts/sync-skills.sh" $(SKILLS_MANIFEST_FILES)
 
 # Install OpenCode configuration (agents + opencode.json from jsonnet)
 # Global instructions come from ~/.config/opencode/AGENTS.md → canonical pi file.
@@ -322,7 +304,7 @@ clean-skills: require-yq
 	@if command -v npx >/dev/null 2>&1; then \
 		set -e; \
 		skill_names="$$($(SKILLS_MANIFEST_NAMES))"; \
-		$(SKILLS_CLI) remove $$skill_names --global --agent opencode --agent universal --agent claude-code --yes; \
+		$(SKILLS_CLI) remove $$skill_names --global --agent opencode --agent claude-code --yes; \
 	else \
 		echo "  Warning: npx not found, skipping published skill removal"; \
 	fi
@@ -362,6 +344,10 @@ check-syntax:
 	@if command -v yq >/dev/null 2>&1; then \
 		echo "  Checking skills.yaml"; \
 		yq '.' skills.yaml >/dev/null || { echo "Error: Invalid YAML in skills.yaml"; exit 1; }; \
+		if [ -f skills-int.yaml ]; then \
+			echo "  Checking skills-int.yaml"; \
+			yq '.' skills-int.yaml >/dev/null || { echo "Error: Invalid YAML in skills-int.yaml"; exit 1; }; \
+		fi; \
 	else \
 		echo "  Warning: yq not found, skipping YAML checks"; \
 	fi

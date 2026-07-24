@@ -187,7 +187,9 @@ test_sync_claude_preserves_existing_generated_files() {
 	mkdir -p "$home_dir/.claude"
 	printf 'custom claude\n' >"$home_dir/.claude/CLAUDE.md"
 
-	assert_make_fails "$home_dir" sync-claude
+	# Public manifest only: sync-skills (a sync-claude prereq) must not depend on
+	# internal sources declared in the gitignored skills-int.yaml.
+	assert_make_fails "$home_dir" sync-claude SKILLS_MANIFEST_INT=
 	assert_file_exists "$home_dir/.claude/CLAUDE.md"
 	assert_contains "$home_dir/.claude/CLAUDE.md" 'custom claude'
 }
@@ -201,7 +203,8 @@ test_sync_claude_force_overwrites_generated_files() {
 	printf 'custom claude\n' >"$home_dir/.claude/CLAUDE.md"
 	printf '{"custom":true}\n' >"$home_dir/.claude/settings.json"
 
-	HOME="$home_dir" make sync-claude-force >"$TEST_OUTPUT" 2>&1
+	# Public manifest only: keep the skill install offline-deterministic.
+	HOME="$home_dir" make sync-claude-force SKILLS_MANIFEST_INT= >"$TEST_OUTPUT" 2>&1
 	assert_symlink_target "$home_dir/.claude/agents" "$REPO_ROOT/claude/.claude/agents"
 	assert_symlink_resolves_to "$home_dir/.claude/skills/$FIRST_MANAGED_SKILL" "$home_dir/.agents/skills/$FIRST_MANAGED_SKILL"
 	assert_symlink_target "$home_dir/.claude/CLAUDE.md" "$home_dir/.pi/agent/AGENTS.md"
