@@ -92,8 +92,8 @@ Skills are tool-neutral and shared through the universal
 Discovery per tool:
 
 - **OpenCode** and **pi** read `~/.agents/skills/` natively.
-- **Claude Code** reads `~/.claude/skills/`; the skills CLI creates one symlink
-  there for each managed skill by targeting the `claude-code` agent.
+- **Claude Code** reads `~/.claude/skills/` only, so apm deploys a second copy
+  there via its `claude` target.
 
 Install:
 
@@ -101,8 +101,19 @@ Install:
 make sync-skills
 ```
 
-The installed skills are declared in `skills.yaml` at the repo root — edit that
-file to add or remove a skill, then rerun `make sync-skills`.
+The installed skills are declared in `apm/apm.yml` — edit that file to add or
+remove a skill, then rerun `make sync-skills`. Removing an entry is enough:
+`apm` reconciles the deployed skills against the manifest and prunes the rest.
+
+`make sync-skills` merges `apm/apm.yml` with the gitignored `apm/apm-int.yml`
+when present and writes the result to `~/.apm/apm.yml`, the only manifest
+`apm install --global` reads. That file is generated; edit the repo manifest
+instead. If it drifts — a hand edit, or an `apm uninstall --global` — the sync
+refuses to clobber it and points at `make sync-skills-force`.
+
+Take a single skill out of a repo with `path:` rather than `skills:` when the
+upstream repo also ships hooks. A whole-repo dependency deploys those hooks into
+`~/.claude/settings.json`, which `make sync-claude` generates and guards.
 
 ## MCP Servers
 

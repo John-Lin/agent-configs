@@ -8,7 +8,7 @@ TEST_OUTPUT=$(mktemp /tmp/makefile-safety.out.XXXXXX)
 # Derive expected values from their sources so assertions track changes to the
 # canonical instructions and the skills manifest instead of hardcoding names.
 CANONICAL_MARKER=$(head -n1 "$REPO_ROOT/agents-md/AGENTS.base.md")
-FIRST_MANAGED_SKILL=$(yq -r '[.[][]][0]' "$REPO_ROOT/skills.yaml")
+FIRST_MANAGED_SKILL=$(yq -r '[.dependencies.apm[] | (.skills // [.path])] | flatten | .[0] | split("/") | .[-1]' "$REPO_ROOT/apm/apm.yml")
 
 cleanup() {
 	rm -f "$TEST_OUTPUT"
@@ -51,21 +51,6 @@ assert_symlink_target() {
 
 	if [ "$(readlink "$path")" != "$expected" ]; then
 		printf 'Expected %s to point to %s\n' "$path" "$expected" >&2
-		exit 1
-	fi
-}
-
-assert_symlink_resolves_to() {
-	local path="$1"
-	local expected="$2"
-
-	if [ ! -L "$path" ]; then
-		printf 'Expected symlink: %s\n' "$path" >&2
-		exit 1
-	fi
-
-	if [ "$(realpath "$path")" != "$(realpath "$expected")" ]; then
-		printf 'Expected %s to resolve to %s\n' "$path" "$expected" >&2
 		exit 1
 	fi
 }
@@ -188,7 +173,7 @@ test_sync_claude_preserves_existing_generated_files() {
 	printf 'custom claude\n' >"$home_dir/.claude/CLAUDE.md"
 
 	# Public manifest only: sync-skills (a sync-claude prereq) must not depend on
-	# internal sources declared in the gitignored skills-int.yaml.
+	# internal sources declared in the gitignored apm/apm-int.yml.
 	assert_make_fails "$home_dir" sync-claude SKILLS_MANIFEST_INT=
 	assert_file_exists "$home_dir/.claude/CLAUDE.md"
 	assert_contains "$home_dir/.claude/CLAUDE.md" 'custom claude'
@@ -206,7 +191,7 @@ test_sync_claude_force_overwrites_generated_files() {
 	# Public manifest only: keep the skill install offline-deterministic.
 	HOME="$home_dir" make sync-claude-force SKILLS_MANIFEST_INT= >"$TEST_OUTPUT" 2>&1
 	assert_symlink_target "$home_dir/.claude/agents" "$REPO_ROOT/claude/.claude/agents"
-	assert_symlink_resolves_to "$home_dir/.claude/skills/$FIRST_MANAGED_SKILL" "$home_dir/.agents/skills/$FIRST_MANAGED_SKILL"
+	assert_file_exists "$home_dir/.claude/skills/$FIRST_MANAGED_SKILL/SKILL.md"
 	assert_symlink_target "$home_dir/.claude/CLAUDE.md" "$home_dir/.pi/agent/AGENTS.md"
 	assert_contains "$home_dir/.claude/CLAUDE.md" "$CANONICAL_MARKER"
 }

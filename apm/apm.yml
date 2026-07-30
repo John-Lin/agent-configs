@@ -1,0 +1,42 @@
+# Shared skills manifest — the single source of truth for `make sync-skills`,
+# `make clean-skills`, and the test assertions.
+#
+# `apm install --global` deploys every declared skill twice: to
+# ~/.agents/skills/ (the universal directory OpenCode and pi read natively) and
+# to ~/.claude/skills/ (the only skill directory Claude Code discovers).
+#
+# Internal (non-public) sources live in apm/apm-int.yml, which is gitignored and
+# merged in automatically when present. That file must declare nothing but a
+# `dependencies.apm:` list — every other key belongs to this file.
+#
+# Pin `ref:` to a tag wherever upstream publishes one. Without a ref the
+# dependency tracks the default branch, and only apm.lock.yaml pins the commit.
+name: agent-configs-skills
+version: 0.1.0
+description: Shared agent skills managed by agent-configs
+
+targets:
+  - claude
+  - agent-skills
+
+dependencies:
+  apm:
+    # `path:` selects one skill directory out of a repo that is not itself an
+    # apm package. It is also the way to take a single skill from a repo that
+    # ships hooks: a whole-repo dependency deploys those hooks into
+    # ~/.claude/settings.json, which `make sync-claude` owns.
+    - git: cocoon-ai/architecture-diagram-generator
+      path: architecture-diagram
+      ref: "1.1"
+    # Unpinned on purpose: skills/ exists only on the default branch, so every
+    # published context7 tag resolves to a tree without the skill.
+    - git: upstash/context7
+      skills:
+        - find-docs
+    - git: mattpocock/skills
+      ref: v1.1.0
+      skills:
+        - skills/productivity/grill-me
+        - skills/engineering/grill-with-docs
+        - skills/productivity/handoff
+        - skills/productivity/writing-great-skills

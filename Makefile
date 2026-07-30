@@ -5,18 +5,18 @@ all: sync
 SHELL := /bin/bash
 
 REPO_ROOT := $(abspath $(CURDIR))
-SKILLS_CLI := npx --yes skills@1.5.19
 
-# skills.yaml is the single source of truth for managed public skills; the smoke
-# test derives its assertions from the same file. skills-int.yaml holds internal
+# apm/apm.yml is the single source of truth for managed public skills; the tests
+# derive their assertions from the same file. apm/apm-int.yml holds internal
 # (non-public) sources, is gitignored, and is merged in when present.
-SKILLS_MANIFEST := $(REPO_ROOT)/skills.yaml
-SKILLS_MANIFEST_INT := $(REPO_ROOT)/skills-int.yaml
+SKILLS_MANIFEST := $(REPO_ROOT)/apm/apm.yml
+SKILLS_MANIFEST_INT := $(REPO_ROOT)/apm/apm-int.yml
 SKILLS_MANIFEST_FILES := $(SKILLS_MANIFEST) $(wildcard $(SKILLS_MANIFEST_INT))
-# Merge every manifest (combining skill lists for repos shared across files).
+# Merge every manifest (concatenating the dependency lists).
 SKILLS_MANIFEST_MERGE := . as $$item ireduce ({}; . *+ $$item)
-# Print every managed skill name on one line (used by clean-skills).
-SKILLS_MANIFEST_NAMES := yq ea -r '$(SKILLS_MANIFEST_MERGE) | [.[][]] | join(" ")' $(SKILLS_MANIFEST_FILES)
+# Print every managed package reference, one per line (used by clean-skills).
+# A dependency with a `path:` is uninstalled by its full "<repo>/<path>" form.
+SKILLS_MANIFEST_PACKAGES := yq ea -r '$(SKILLS_MANIFEST_MERGE) | .dependencies.apm[] | [(.git // .), .path] | filter(. != null) | join("/")' $(SKILLS_MANIFEST_FILES)
 
 # Auto-detect work environment via OPENCODE_WORK_CONFIG env var (path to external config dir)
 OPENCODE_ENV := $(if $(OPENCODE_WORK_CONFIG),work,personal)
@@ -104,12 +104,12 @@ endef
 require-stow:
 	@command -v stow >/dev/null 2>&1 || { echo "Error: stow is not installed. Please install it first."; exit 1; }
 
-require-npx:
-	@command -v npx >/dev/null 2>&1 || { echo "Error: npx is not installed. Please install Node.js first."; exit 1; }
+require-apm:
+	@command -v apm >/dev/null 2>&1 || { echo "Error: apm is not installed (brew install microsoft/apm/apm). Required to install skills."; exit 1; }
 
 # mikefarah yq v4 (brew install yq); Ubuntu's apt "yq" is an incompatible tool.
 require-yq:
-	@command -v yq >/dev/null 2>&1 || { echo "Error: yq is not installed (brew install yq). Required to read skills.yaml."; exit 1; }
+	@command -v yq >/dev/null 2>&1 || { echo "Error: yq is not installed (brew install yq). Required to read apm/apm.yml."; exit 1; }
 
 require-jq:
 	@command -v jq >/dev/null 2>&1 || { echo "Error: jq is not installed. Please install it first."; exit 1; }
@@ -188,11 +188,20 @@ sync-ccstatusline: require-stow
 	stow -t ~ ccstatusline
 	@echo "ccstatusline configuration installed"
 
-# Install published skills with the pinned skills CLI into the universal
-# ~/.agents/skills directory. OpenCode and pi read this path natively; the CLI
-# creates one symlink per managed skill under ~/.claude/skills for Claude Code.
-sync-skills: require-npx require-yq
-	@SKILLS_CLI="$(SKILLS_CLI)" bash "$(REPO_ROOT)/scripts/sync-skills.sh" $(SKILLS_MANIFEST_FILES)
+# Install the declared skills with apm. They land in the universal
+# ~/.agents/skills directory, which OpenCode and pi read natively, and in
+# ~/.claude/skills, the only skill directory Claude Code discovers.
+sync-skills: require-apm require-yq
+	@bash "$(REPO_ROOT)/scripts/sync-skills.sh" $(SKILLS_MANIFEST_FILES)
+
+# Reinstall skills, replacing a drifted user-scope manifest. Use after an
+# `apm uninstall --global` or a hand edit left ~/.apm/apm.yml out of sync with
+# the repo manifest. Installed skills are reconciled from the manifest, so
+# anything it no longer declares is pruned.
+sync-skills-force:
+	@echo "Installing shared skills (force)..."
+	@rm -f ~/.apm/apm.yml
+	@$(MAKE) sync-skills
 
 # Install OpenCode configuration (agents + opencode.json from jsonnet)
 # Global instructions come from ~/.config/opencode/AGENTS.md → canonical pi file.
@@ -243,7 +252,8 @@ clean:
 	@echo "  - ~/.config/opencode/agents"
 	@echo "  - ~/.config/opencode/AGENTS.md"
 	@echo "  - ~/.agents/skills/<managed-skill> (canonical copies)"
-	@echo "  - ~/.claude/skills/<managed-skill> (CLI-managed links)"
+	@echo "  - ~/.claude/skills/<managed-skill> (Claude Code copies)"
+	@echo "  - ~/.apm/apm.yml (generated skills manifest)"
 	@echo ""
 	@read -p "Are you sure? [y/N] " -n 1 -r; \
 	echo ""; \
@@ -299,16 +309,27 @@ clean-pi:
 	@echo "  (settings.json left untouched — it is your personal file)"
 	@echo "pi configuration removed"
 
+# apm removes only the files its lockfile records as deployed, so skills that
+# were installed by hand survive. The user-scope manifest is deleted only when
+# it still matches the repo manifest, i.e. when this repo is what installed it.
 clean-skills: require-yq
 	@echo "Removing shared skills..."
-	@if command -v npx >/dev/null 2>&1; then \
-		set -e; \
-		skill_names="$$($(SKILLS_MANIFEST_NAMES))"; \
-		$(SKILLS_CLI) remove $$skill_names --global --agent opencode --agent claude-code --yes; \
+	@set -e; \
+	tmp_manifest="$$(mktemp /tmp/apm-manifest.XXXXXX)"; \
+	trap 'rm -f "$$tmp_manifest"' EXIT; \
+	yq ea '$(SKILLS_MANIFEST_MERGE)' $(SKILLS_MANIFEST_FILES) >"$$tmp_manifest"; \
+	if ! command -v apm >/dev/null 2>&1; then \
+		echo "  Warning: apm not found, skipping skill removal"; \
+	elif [ ! -e "$${HOME}/.apm/apm.yml" ]; then \
+		echo "  No manifest at $${HOME}/.apm/apm.yml, nothing to remove"; \
+	elif ! cmp -s "$$tmp_manifest" "$${HOME}/.apm/apm.yml"; then \
+		echo "  Warning: Skipping unmanaged file $${HOME}/.apm/apm.yml"; \
 	else \
-		echo "  Warning: npx not found, skipping published skill removal"; \
+		packages="$$($(SKILLS_MANIFEST_PACKAGES))"; \
+		(cd "$${HOME}" && apm uninstall --global $$packages); \
+		rm -f "$${HOME}/.apm/apm.yml"; \
 	fi
-	@rmdir ~/.agents/skills ~/.agents 2>/dev/null || true
+	@rmdir ~/.agents/skills ~/.agents ~/.apm/apm_modules ~/.apm 2>/dev/null || true
 	@echo "Shared skills removed"
 
 # Test commands
@@ -342,15 +363,13 @@ check-syntax:
 	done
 	@echo "Checking YAML files..."
 	@if command -v yq >/dev/null 2>&1; then \
-		echo "  Checking skills.yaml"; \
-		yq '.' skills.yaml >/dev/null || { echo "Error: Invalid YAML in skills.yaml"; exit 1; }; \
-		if [ -f skills-int.yaml ]; then \
-			echo "  Checking skills-int.yaml"; \
-			yq '.' skills-int.yaml >/dev/null || { echo "Error: Invalid YAML in skills-int.yaml"; exit 1; }; \
-		fi; \
+		for file in $(SKILLS_MANIFEST_FILES); do \
+			echo "  Checking $$file"; \
+			yq '.' "$$file" >/dev/null || { echo "Error: Invalid YAML in $$file"; exit 1; }; \
+		done; \
 	else \
 		echo "  Warning: yq not found, skipping YAML checks"; \
 	fi
 	@echo "Syntax check passed"
 
-.PHONY: all require-stow require-npx require-yq require-jq require-jsonnet clean clean-force clean-claude clean-skills clean-opencode clean-pi sync sync-agents-md sync-agents-md-force sync-claude sync-claude-force sync-ccstatusline sync-skills sync-opencode sync-opencode-force sync-pi sync-pi-force test test-safety test-sync-smoke check-syntax
+.PHONY: all require-stow require-apm require-yq require-jq require-jsonnet clean clean-force clean-claude clean-skills clean-opencode clean-pi sync sync-agents-md sync-agents-md-force sync-claude sync-claude-force sync-ccstatusline sync-skills sync-skills-force sync-opencode sync-opencode-force sync-pi sync-pi-force test test-safety test-sync-smoke check-syntax

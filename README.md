@@ -77,13 +77,15 @@ symlinks: `~/.claude/CLAUDE.md` and `~/.config/opencode/AGENTS.md`. Any of
 as needed.
 
 Shared skills use `~/.agents/skills/<name>` as the universal location. `make
-sync-skills` installs them from their upstream repositories with the pinned
-`skills@1.5.19` CLI.
-OpenCode and pi read the universal path natively; the CLI creates one symlink per
-managed skill under `~/.claude/skills/` for Claude Code. See `docs/ai.md`.
+sync-skills` installs them from their upstream repositories with `apm`.
+OpenCode and pi read the universal path natively; Claude Code reads only its own
+`~/.claude/skills/`, so apm deploys a second copy there. See `docs/ai.md`.
 
-To add a skill, add it to `skills.yaml` (repo → skill names) and rerun `make
-sync-skills`. Install, removal, and the smoke test all read that manifest.
+To add a skill, declare it in `apm/apm.yml` and rerun `make sync-skills`.
+Install, removal, and the tests all read that manifest, and `apm` prunes any
+skill the manifest no longer declares. `apm.lock.yaml` pins each dependency to a
+resolved commit, so a rerun reinstalls the same bytes until you run
+`apm update --global`.
 
 Migrating a machine that already had the old dotfiles installed? See
 `MIGRATION.md`.
@@ -99,8 +101,8 @@ Detailed setup:
 - Git, Make, GNU Stow (for ccstatusline)
 - `jq`
 - `jsonnet` (for `make sync-opencode`)
-- `yq` (mikefarah v4, `brew install yq` — reads `skills.yaml`)
-- Node.js (provides `npx` for the pinned skills CLI)
+- `yq` (mikefarah v4, `brew install yq` — reads `apm/apm.yml`)
+- `apm` (`brew install microsoft/apm/apm` — installs skills)
 - `bun` if required by the locally installed agent runtimes
 - Python 3 (used by `make check-syntax`)
 

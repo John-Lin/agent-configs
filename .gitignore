@@ -22,4 +22,4 @@ agents-md/AGENTS.personal.md
 claude/claude_settings.personal.json
 
 # Internal (non-public) skills manifest
-skills-int.yaml
+apm/apm-int.yml
