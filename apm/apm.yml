@@ -40,3 +40,9 @@ dependencies:
         - skills/engineering/grill-with-docs
         - skills/productivity/handoff
         - skills/productivity/writing-great-skills
+    # superpowers ships hooks/hooks.json. Depending on the whole repo would
+    # register its SessionStart hook in ~/.claude/settings.json even when only
+    # one skill is selected, so take the skill directory directly.
+    - git: obra/superpowers
+      path: skills/test-driven-development
+      ref: v6.2.0
