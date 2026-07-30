@@ -38,6 +38,33 @@ if [ -L ~/.claude/skills ]; then
 	fi
 fi
 
+# The previous skills CLI linked each managed skill into ~/.claude/skills/.
+# apm refuses to deploy onto a symlinked destination, so drop the links that
+# point back into the universal directory. Links to anywhere else are somebody
+# else's and are left for apm to report as a collision.
+universal_skills="${HOME}/.agents/skills"
+migrated=0
+for link in "${HOME}"/.claude/skills/*; do
+	[ -L "$link" ] || continue
+	target="$(readlink "$link")"
+	case "$target" in
+	/*) resolved="$target" ;;
+	*) resolved="$(cd "$(dirname "$link")" && cd "$(dirname "$target")" && pwd)/$(basename "$target")" || continue ;;
+	esac
+	case "$resolved" in
+	"$universal_skills"/*)
+		rm -f "$link"
+		migrated=$((migrated + 1))
+		;;
+	esac
+done
+if [ "$migrated" -gt 0 ]; then
+	echo "  Replaced $migrated legacy Claude Code skill link(s) with apm-managed copies"
+fi
+
+# State file owned by the skills CLI this target no longer uses.
+rm -f ~/.agents/.skill-lock.json
+
 mkdir -p ~/.apm
 
 tmp_manifest="$(mktemp /tmp/apm-manifest.XXXXXX)"

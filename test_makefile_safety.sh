@@ -55,6 +55,13 @@ assert_symlink_target() {
 	fi
 }
 
+assert_not_symlink() {
+	if [ -L "$1" ]; then
+		printf 'Expected a real path, not a symlink: %s\n' "$1" >&2
+		exit 1
+	fi
+}
+
 assert_packages_match_manifest() {
 	local settings="$1"
 	if ! diff <(jq -S '.packages' "$settings") <(jq -S '.' "$REPO_ROOT/pi/packages.json") >/dev/null; then
@@ -162,6 +169,30 @@ test_sync_skills_preserves_unmanaged_claude_skills_symlink() {
 	assert_symlink_target "$home_dir/.claude/skills" "$custom_skills"
 	assert_file_exists "$custom_skills/local.txt"
 	assert_contains "$custom_skills/local.txt" 'keep me'
+}
+
+# The previous skills CLI linked each managed skill into ~/.claude/skills/.
+# apm deploys real directories there, so those links have to go — but only the
+# ones pointing back into the universal directory.
+test_sync_skills_migrates_legacy_per_skill_symlinks() {
+	local home_dir custom_skills
+	home_dir=$(mktemp -d)
+	trap '[ -n "${home_dir-}" ] && rm -rf "$home_dir"' RETURN
+	custom_skills="$home_dir/custom-skills"
+
+	mkdir -p "$home_dir/.claude/skills" \
+		"$home_dir/.agents/skills/$FIRST_MANAGED_SKILL" \
+		"$custom_skills/mine"
+	printf 'stale\n' >"$home_dir/.agents/skills/$FIRST_MANAGED_SKILL/SKILL.md"
+	ln -s "../../.agents/skills/$FIRST_MANAGED_SKILL" "$home_dir/.claude/skills/$FIRST_MANAGED_SKILL"
+	printf 'keep me\n' >"$custom_skills/mine/SKILL.md"
+	ln -s "$custom_skills/mine" "$home_dir/.claude/skills/mine"
+
+	HOME="$home_dir" make sync-skills SKILLS_MANIFEST_INT= >"$TEST_OUTPUT" 2>&1
+	assert_not_symlink "$home_dir/.claude/skills/$FIRST_MANAGED_SKILL"
+	assert_file_exists "$home_dir/.claude/skills/$FIRST_MANAGED_SKILL/SKILL.md"
+	assert_symlink_target "$home_dir/.claude/skills/mine" "$custom_skills/mine"
+	assert_file_exists "$custom_skills/mine/SKILL.md"
 }
 
 test_sync_claude_preserves_existing_generated_files() {
@@ -331,6 +362,7 @@ main() {
 	test_sync_opencode_force_replaces_existing_directory
 	test_clean_force_preserves_unmanaged_opencode_directory
 	test_sync_skills_preserves_unmanaged_claude_skills_symlink
+	test_sync_skills_migrates_legacy_per_skill_symlinks
 	test_sync_claude_preserves_existing_generated_files
 	test_sync_claude_force_overwrites_generated_files
 	test_sync_agents_md_preserves_existing_canonical
