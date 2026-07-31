@@ -91,8 +91,7 @@ where apm actually reads from. Copy it in either direction by hand; nothing
 syncs it. Machines diverge on purpose — a work machine's manifest can name
 internal repositories that must not be committed. See `docs/ai.md`.
 
-Migrating a machine that already had the old dotfiles installed? See
-`MIGRATION.md`.
+Moving a machine off the previous skills CLI? See `MIGRATION.md`.
 
 Detailed setup:
 - `claude/README.md`
