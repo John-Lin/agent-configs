@@ -1,13 +1,13 @@
-# Shared skills manifest — the single source of truth for `make sync-skills`,
-# `make clean-skills`, and the test assertions.
+# Reference copy of ~/.apm/apm.yml, the manifest apm reads at user scope. Its
+# location is fixed and cannot be redirected, so this file is copied into place
+# by hand — nothing syncs it. See docs/ai.md.
 #
 # `apm install --global` deploys every declared skill twice: to
 # ~/.agents/skills/ (the universal directory OpenCode and pi read natively) and
 # to ~/.claude/skills/ (the only skill directory Claude Code discovers).
 #
-# Internal (non-public) sources live in apm/apm-int.yml, which is gitignored and
-# merged in automatically when present. That file must declare nothing but a
-# `dependencies.apm:` list — every other key belongs to this file.
+# This is the personal machine's manifest. A work machine keeps its own, which
+# may name internal repositories and is never committed here.
 #
 # Pin `ref:` to a tag wherever upstream publishes one. Without a ref the
 # dependency tracks the default branch, and only apm.lock.yaml pins the commit.

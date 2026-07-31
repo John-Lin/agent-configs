@@ -86,8 +86,8 @@ Tracked shared agents currently include:
 ## Skills
 
 Skills are tool-neutral and shared through the universal
-`~/.agents/skills/<name>` location. `make sync-skills` uses the pinned
-`skills@1.5.19` CLI to install every managed skill there.
+`~/.agents/skills/<name>` location. They are installed with
+[apm](https://github.com/microsoft/apm) directly — `make` is not involved.
 
 Discovery per tool:
 
@@ -95,25 +95,47 @@ Discovery per tool:
 - **Claude Code** reads `~/.claude/skills/` only, so apm deploys a second copy
   there via its `claude` target.
 
-Install:
+The manifest apm reads is `~/.apm/apm.yml`; its location is fixed and cannot be
+redirected. `apm/apm.yml` in this repo is a **tracked reference copy** of that
+file — nothing syncs it automatically. Copy it into place on a new machine, then
+let apm own it from there:
 
 ```bash
-make sync-skills
+mkdir -p ~/.apm && cp apm/apm.yml ~/.apm/apm.yml
+apm install --global
 ```
 
-The installed skills are declared in `apm/apm.yml` — edit that file to add or
-remove a skill, then rerun `make sync-skills`. Removing an entry is enough:
-`apm` reconciles the deployed skills against the manifest and prunes the rest.
+Day-to-day:
 
-`make sync-skills` merges `apm/apm.yml` with the gitignored `apm/apm-int.yml`
-when present and writes the result to `~/.apm/apm.yml`, the only manifest
-`apm install --global` reads. That file is generated; edit the repo manifest
-instead. If it drifts — a hand edit, or an `apm uninstall --global` — the sync
-refuses to clobber it and points at `make sync-skills-force`.
+```bash
+apm install --global <owner>/<repo> --skill <name>   # add
+apm outdated --global                                # what moved upstream
+apm update --global                                  # take newer refs
+apm uninstall --global <owner>/<repo>                # remove
+```
 
-Take a single skill out of a repo with `path:` rather than `skills:` when the
-upstream repo also ships hooks. A whole-repo dependency deploys those hooks into
-`~/.claude/settings.json`, which `make sync-claude` generates and guards.
+`apm install` reconciles against the manifest, so deleting an entry and
+reinstalling prunes the skill. `~/.apm/apm.lock.yaml` pins each dependency to a
+resolved commit, so a rerun reinstalls the same bytes until you run
+`apm update`.
+
+Copy the manifest back into this repo when you want the change recorded:
+
+```bash
+cp ~/.apm/apm.yml apm/apm.yml
+```
+
+The copy is deliberate. Machines diverge — a work machine's manifest can name
+internal repositories that must not be committed, so only the personal manifest
+is tracked here.
+
+Two things worth knowing before adding a source:
+
+- Take a single skill out of a repo with `path:` rather than `skills:` when the
+  upstream repo also ships hooks. A whole-repo dependency deploys those hooks
+  into `~/.claude/settings.json`, which `make sync-claude` generates and guards.
+- Not every repo can be pinned. `upstash/context7` keeps `skills/` only on its
+  default branch, so every published tag resolves to a tree without the skill.
 
 ## MCP Servers
 

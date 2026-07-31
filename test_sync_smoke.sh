@@ -80,21 +80,8 @@ run_make() {
 	fi
 }
 
-# Print the deployed directory name of every skill declared in apm/apm.yml.
-# A skill is named by the last segment of its `skills:` entry, or of the `path:`
-# that selects it, which is exactly the directory apm deploys it into.
-manifest_skills() {
-	yq -r '[.dependencies.apm[] | (.skills // [.path])] | flatten | .[] | split("/") | .[-1]' "$REPO_ROOT/apm/apm.yml"
-}
-
-# Print the source repository of every declared dependency. The lockfile records
-# this as `repo_url`, with any `path:` kept separately as `virtual_path`.
-manifest_repos() {
-	yq -r '.dependencies.apm[] | (.git // .)' "$REPO_ROOT/apm/apm.yml"
-}
-
 main() {
-	local home_dir test_output skill_names skill repo first_pkg
+	local home_dir test_output first_pkg
 	home_dir=$(mktemp -d)
 	test_output=$(mktemp /tmp/sync-smoke.out.XXXXXX)
 	CLEANUP_HOME="$home_dir"
@@ -112,37 +99,12 @@ main() {
 	# opencode reads instructions from a global AGENTS.md → canonical pi file
 	assert_symlink_target "$home_dir/.config/opencode/AGENTS.md" "$home_dir/.pi/agent/AGENTS.md"
 
-	mkdir -p "$home_dir/.agents/skills" "$home_dir/.claude"
-	ln -s "$home_dir/.agents/skills" "$home_dir/.claude/skills"
-	# Force the public manifest only: internal sources (apm/apm-int.yml) may need
-	# VPN/auth, and an empty SKILLS_MANIFEST_INT also exercises the
-	# missing-internal-manifest path, which must not break sync-skills.
-	run_make "$home_dir" sync-claude SKILLS_MANIFEST_INT=
-	# apm installs into the universal directory from the generated user-scope
-	# manifest. Every skill declared in apm/apm.yml must be present, and every
-	# package must be pinned to a resolved commit in the lockfile.
-	skill_names="$(manifest_skills)"
-	if [ -z "$skill_names" ]; then
-		printf 'apm/apm.yml produced no skills\n' >&2
-		exit 1
-	fi
-	for skill in $skill_names; do
-		assert_exists "$home_dir/.agents/skills/$skill/SKILL.md"
-	done
-	for repo in $(manifest_repos); do
-		assert_file_contains "$home_dir/.apm/apm.lock.yaml" "$repo"
-	done
-
+	run_make "$home_dir" sync-claude
 	# CLAUDE.md is now a symlink to the canonical pi AGENTS.md
 	assert_symlink_target "$home_dir/.claude/CLAUDE.md" "$home_dir/.pi/agent/AGENTS.md"
 	assert_file_contains "$home_dir/.claude/CLAUDE.md" "$CANONICAL_MARKER"
 	assert_exists "$home_dir/.claude/settings.json"
 	assert_symlink_resolves_to "$home_dir/.claude/agents" "$REPO_ROOT/claude/.claude/agents"
-	# Claude Code reads only its own skill directory, so apm deploys a second
-	# copy there rather than linking back to the universal directory.
-	for skill in $skill_names; do
-		assert_exists "$home_dir/.claude/skills/$skill/SKILL.md"
-	done
 
 	run_make "$home_dir" sync-pi
 	# pi owns the canonical instructions as a real generated file
@@ -153,11 +115,6 @@ main() {
 	# package from the manifest so the assertion tracks changes automatically.
 	first_pkg=$(jq -r '.. | strings | select(startswith("npm:"))' "$REPO_ROOT/pi/packages.json" | head -1)
 	assert_file_contains "$home_dir/.pi/agent/settings.json" "$first_pkg"
-
-	mkdir -p "$home_dir/.agents/skills/unmanaged-skill"
-	printf '%s\n' 'keep me' >"$home_dir/.agents/skills/unmanaged-skill/SKILL.md"
-	run_make "$home_dir" clean-skills
-	assert_exists "$home_dir/.agents/skills/unmanaged-skill/SKILL.md"
 }
 
 main "$@"

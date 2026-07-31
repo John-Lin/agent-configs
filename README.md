@@ -31,7 +31,6 @@ make sync-claude        # Claude Code config (CLAUDE.md→AGENTS.md, settings.js
 make sync-ccstatusline  # ccstatusline config
 make sync-opencode      # OpenCode agents + generated opencode.json + AGENTS.md
 make sync-pi            # pi canonical AGENTS.md + packages injection
-make sync-skills        # upstream skills → ~/.agents/skills/<name>
 
 make sync-agents-md-force  # regenerate canonical AGENTS.md only (after editing AGENTS.personal.md)
 make sync-claude-force
@@ -76,16 +75,20 @@ symlinks: `~/.claude/CLAUDE.md` and `~/.config/opencode/AGENTS.md`. Any of
 `make sync-claude` / `sync-opencode` / `sync-pi` regenerates the canonical file
 as needed.
 
-Shared skills use `~/.agents/skills/<name>` as the universal location. `make
-sync-skills` installs them from their upstream repositories with `apm`.
-OpenCode and pi read the universal path natively; Claude Code reads only its own
-`~/.claude/skills/`, so apm deploys a second copy there. See `docs/ai.md`.
+Shared skills are **not** managed by make. They are installed with
+[apm](https://github.com/microsoft/apm) directly, into `~/.agents/skills/<name>`
+(read natively by OpenCode and pi) and `~/.claude/skills/<name>` (the only skill
+directory Claude Code discovers):
 
-To add a skill, declare it in `apm/apm.yml` and rerun `make sync-skills`.
-Install, removal, and the tests all read that manifest, and `apm` prunes any
-skill the manifest no longer declares. `apm.lock.yaml` pins each dependency to a
-resolved commit, so a rerun reinstalls the same bytes until you run
-`apm update --global`.
+```bash
+mkdir -p ~/.apm && cp apm/apm.yml ~/.apm/apm.yml   # new machine
+apm install --global
+```
+
+`apm/apm.yml` here is a tracked reference copy of `~/.apm/apm.yml`, which is
+where apm actually reads from. Copy it in either direction by hand; nothing
+syncs it. Machines diverge on purpose — a work machine's manifest can name
+internal repositories that must not be committed. See `docs/ai.md`.
 
 Migrating a machine that already had the old dotfiles installed? See
 `MIGRATION.md`.
@@ -101,8 +104,8 @@ Detailed setup:
 - Git, Make, GNU Stow (for ccstatusline)
 - `jq`
 - `jsonnet` (for `make sync-opencode`)
-- `yq` (mikefarah v4, `brew install yq` — reads `apm/apm.yml`)
-- `apm` (`brew install microsoft/apm/apm` — installs skills)
+- `yq` (mikefarah v4, `brew install yq` — used by `make check-syntax`)
+- `apm` (`brew install microsoft/apm/apm` — installs skills, outside make)
 - `bun` if required by the locally installed agent runtimes
 - Python 3 (used by `make check-syntax`)
 
