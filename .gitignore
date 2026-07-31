@@ -21,12 +21,6 @@ jsonnet/*_work*
 agents-md/AGENTS.personal.md
 claude/claude_settings.personal.json
 
-# Internal (company-only) skills list; see skills-int.yaml.example
-skills-int.yaml
-
 # apm state; only apm/apm.yml (the reference manifest) is tracked
 apm/apm.lock.yaml
-
-
-# APM dependencies
 apm_modules/
