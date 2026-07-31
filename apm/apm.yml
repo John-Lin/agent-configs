@@ -1,46 +1,41 @@
-# Reference copy of ~/.apm/apm.yml, the manifest apm reads at user scope. Its
-# location is fixed and cannot be redirected, so this file is copied into place
-# by hand — nothing syncs it. See docs/ai.md.
+# Reference copy of ~/.apm/apm.yml (apm's fixed-location, user-scope manifest).
+# Copied into place by hand — nothing syncs it. See docs/ai.md.
 #
-# `apm install --global` deploys every declared skill twice: to
-# ~/.agents/skills/ (the universal directory OpenCode and pi read natively) and
-# to ~/.claude/skills/ (the only skill directory Claude Code discovers).
+# `apm install --global` deploys each skill to ~/.agents/skills/ (OpenCode/pi)
+# and ~/.claude/skills/ (Claude Code).
 #
-# This is the personal machine's manifest. A work machine keeps its own, which
-# may name internal repositories and is never committed here.
+# Personal-machine manifest; a work machine keeps its own with internal repos,
+# never committed here.
 #
-# Pin `ref:` to a tag wherever upstream publishes one. Without a ref the
-# dependency tracks the default branch, and only apm.lock.yaml pins the commit.
+# Pin `ref:` to a tag when upstream publishes one — otherwise the dependency
+# tracks the default branch and only apm.lock.yaml pins the commit.
 name: agent-configs-skills
 version: 0.1.0
 description: Shared agent skills managed by agent-configs
 
-# Named rather than auto-detected, so deployment is identical on every machine.
-# `agent-skills` is what writes ~/.agents/skills/ — pi is not an apm target at
-# all, and that directory is otherwise only filled as a side effect of OpenCode
-# being detected. Naming both also keeps apm out of ~/.config/opencode/, which
-# `make sync-opencode` owns.
+# Named explicitly so deployment is identical on every machine — auto-detect
+# would skip `agent-skills` (needed by pi, which has no apm profile of its own)
+# and could reach into ~/.config/opencode/, which `make sync-opencode` owns.
 targets:
   - claude
   - agent-skills
 
 dependencies:
   apm:
-    # `path:` selects one skill directory out of a repo that is not itself an
-    # apm package. It is also the way to take a single skill from a repo that
-    # ships hooks: a whole-repo dependency deploys those hooks into
-    # ~/.claude/settings.json, which `make sync-claude` owns.
+    # `path:` pulls one skill out of a repo that isn't itself an apm package
+    # (or that ships hooks — a whole-repo dep would deploy those into
+    # ~/.claude/settings.json, which `make sync-claude` owns).
     - git: cocoon-ai/architecture-diagram-generator
       path: architecture-diagram
       ref: "1.1"
-    # Unpinned on purpose: skills/ exists only on the default branch, so every
-    # published context7 tag resolves to a tree without the skill.
+    # Unpinned on purpose: skills/ only exists on the default branch; every
+    # published tag resolves to a tree without it.
     - git: upstash/context7
       skills:
         - find-docs
-    # Pinned to a commit, not to v1.1.0: the tag predates the per-skill
-    # agents/openai.yaml files, and plugin.json already claims 1.2.0, so the
-    # released tag is behind what the default branch ships.
+    # Pinned to a commit, not v1.1.0: that tag predates the per-skill
+    # agents/openai.yaml files (plugin.json already claims 1.2.0 on default).
+    # `apm outdated` flags this against the tag — false positive, ignore it.
     - git: mattpocock/skills
       ref: 2ab958093e83e0ec752e6c1c5932da465bf23e0c
       skills:
@@ -48,9 +43,9 @@ dependencies:
         - skills/engineering/grill-with-docs
         - skills/productivity/handoff
         - skills/productivity/writing-great-skills
-    # superpowers ships hooks/hooks.json. Depending on the whole repo would
-    # register its SessionStart hook in ~/.claude/settings.json even when only
-    # one skill is selected, so take the skill directory directly.
+    # superpowers ships hooks/hooks.json; a whole-repo dep would register its
+    # SessionStart hook in ~/.claude/settings.json, so take the skill path
+    # directly.
     - git: obra/superpowers
       path: skills/test-driven-development
       ref: v6.2.0
