@@ -15,6 +15,11 @@ name: agent-configs-skills
 version: 0.1.0
 description: Shared agent skills managed by agent-configs
 
+# Named rather than auto-detected, so deployment is identical on every machine.
+# `agent-skills` is what writes ~/.agents/skills/ — pi is not an apm target at
+# all, and that directory is otherwise only filled as a side effect of OpenCode
+# being detected. Naming both also keeps apm out of ~/.config/opencode/, which
+# `make sync-opencode` owns.
 targets:
   - claude
   - agent-skills

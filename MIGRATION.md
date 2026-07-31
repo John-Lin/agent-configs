@@ -1,3 +1,11 @@
+Migrations are recorded newest first. Only the first section applies to a machine
+on the current layout; everything below it is kept as a record of earlier moves
+and still refers to `make sync-skills` and the skills CLI, both of which are
+gone. Run an older section only to bring a machine forward to the layout that
+section produced, then continue with the section above it.
+
+---
+
 # Migration: skills CLI → apm
 
 Run once per machine. The skills CLI created one symlink per managed skill under

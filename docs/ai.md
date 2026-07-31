@@ -129,11 +129,36 @@ The copy is deliberate. Machines diverge — a work machine's manifest can name
 internal repositories that must not be committed, so only the personal manifest
 is tracked here.
 
-Two things worth knowing before adding a source:
+### Why `targets:` is written out
+
+```yaml
+targets:
+  - claude
+  - agent-skills
+```
+
+Without this block apm auto-detects targets from whichever directories happen to
+exist under `$HOME` — `~/.claude/` activates `claude`, `~/.config/opencode/`
+activates `opencode`. Naming them keeps deployment identical on every machine.
+
+`agent-skills` is the target that writes `~/.agents/skills/` without belonging to
+any one tool, and it is never auto-detected (its root `.agents/` is shared by
+several tools, so its presence proves nothing). **pi is not an apm target at
+all** — apm has no profile for it — so `agent-skills` is what keeps pi supplied.
+Leave it out and `~/.agents/skills/` is only populated as a side effect of
+OpenCode being detected; drop OpenCode and pi silently loses every skill.
+
+Naming targets also keeps apm out of `~/.config/opencode/`, which
+`make sync-opencode` owns — `~/.config/opencode/agents` is a symlink into this
+repo, and apm would otherwise treat that directory as a deploy destination for
+any dependency shipping agents.
+
+### Two upstream shapes to watch for
 
 - Take a single skill out of a repo with `path:` rather than `skills:` when the
-  upstream repo also ships hooks. A whole-repo dependency deploys those hooks
-  into `~/.claude/settings.json`, which `make sync-claude` generates and guards.
+  upstream repo also ships hooks. `--skill` filters only the `skills` primitive;
+  hooks are a separate one, and a whole-repo dependency deploys them into
+  `~/.claude/settings.json`, which `make sync-claude` generates and guards.
 - Not every repo can be pinned. `upstash/context7` keeps `skills/` only on its
   default branch, so every published tag resolves to a tree without the skill.
 

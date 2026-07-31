@@ -1,7 +1,8 @@
 # agent-configs
 
 Personal configuration for AI coding agents (Claude Code, OpenCode, pi) and the
-Claude status line, managed with `make` and a pinned skills CLI. Split out of my
+Claude status line, managed with `make`; skills are managed separately with
+[apm](https://github.com/microsoft/apm). Split out of my
 [dotfiles](https://github.com/John-Lin/dotfiles) so editor/shell/desktop config
 and agent config can evolve independently.
 
