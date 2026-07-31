@@ -5,18 +5,10 @@ all: sync
 SHELL := /bin/bash
 
 REPO_ROOT := $(abspath $(CURDIR))
-SKILLS_CLI := npx --yes skills@1.5.19
 
-# skills.yaml is the single source of truth for managed public skills; the smoke
-# test derives its assertions from the same file. skills-int.yaml holds internal
-# (non-public) sources, is gitignored, and is merged in when present.
-SKILLS_MANIFEST := $(REPO_ROOT)/skills.yaml
-SKILLS_MANIFEST_INT := $(REPO_ROOT)/skills-int.yaml
-SKILLS_MANIFEST_FILES := $(SKILLS_MANIFEST) $(wildcard $(SKILLS_MANIFEST_INT))
-# Merge every manifest (combining skill lists for repos shared across files).
-SKILLS_MANIFEST_MERGE := . as $$item ireduce ({}; . *+ $$item)
-# Print every managed skill name on one line (used by clean-skills).
-SKILLS_MANIFEST_NAMES := yq ea -r '$(SKILLS_MANIFEST_MERGE) | [.[][]] | join(" ")' $(SKILLS_MANIFEST_FILES)
+# Skills are not installed by make. apm/apm.yml is a tracked reference copy of
+# the user-scope manifest; see docs/ai.md for the apm workflow.
+SKILLS_MANIFEST := $(REPO_ROOT)/apm/apm.yml
 
 # Auto-detect work environment via OPENCODE_WORK_CONFIG env var (path to external config dir)
 OPENCODE_ENV := $(if $(OPENCODE_WORK_CONFIG),work,personal)
@@ -104,13 +96,6 @@ endef
 require-stow:
 	@command -v stow >/dev/null 2>&1 || { echo "Error: stow is not installed. Please install it first."; exit 1; }
 
-require-npx:
-	@command -v npx >/dev/null 2>&1 || { echo "Error: npx is not installed. Please install Node.js first."; exit 1; }
-
-# mikefarah yq v4 (brew install yq); Ubuntu's apt "yq" is an incompatible tool.
-require-yq:
-	@command -v yq >/dev/null 2>&1 || { echo "Error: yq is not installed (brew install yq). Required to read skills.yaml."; exit 1; }
-
 require-jq:
 	@command -v jq >/dev/null 2>&1 || { echo "Error: jq is not installed. Please install it first."; exit 1; }
 
@@ -124,7 +109,8 @@ sync:
 	@echo "  make sync-ccstatusline  - Install ccstatusline configuration"
 	@echo "  make sync-opencode      - Install OpenCode configuration (agents + opencode.json)"
 	@echo "  make sync-pi            - Install pi configuration (AGENTS.md + settings.json)"
-	@echo "  make sync-skills        - Install published skills to ~/.agents/skills/"
+	@echo ""
+	@echo "Skills are installed with apm, not make. See docs/ai.md."
 
 # Generate the canonical instructions file at ~/.pi/agent/AGENTS.md.
 # pi owns this file; Claude Code and OpenCode symlink to it. Every sync target
@@ -154,7 +140,7 @@ sync-agents-md-force:
 
 # Install Claude Code configuration
 # CLAUDE.md is a symlink to the canonical ~/.pi/agent/AGENTS.md.
-sync-claude: sync-agents-md sync-skills require-jq
+sync-claude: sync-agents-md require-jq
 	@echo "Installing Claude Code configuration..."
 	@set -e; \
 	mkdir -p ~/.claude; \
@@ -187,12 +173,6 @@ sync-ccstatusline: require-stow
 	fi
 	stow -t ~ ccstatusline
 	@echo "ccstatusline configuration installed"
-
-# Install published skills with the pinned skills CLI into the universal
-# ~/.agents/skills directory. OpenCode and pi read this path natively; the CLI
-# creates one symlink per managed skill under ~/.claude/skills for Claude Code.
-sync-skills: require-npx require-yq
-	@SKILLS_CLI="$(SKILLS_CLI)" bash "$(REPO_ROOT)/scripts/sync-skills.sh" $(SKILLS_MANIFEST_FILES)
 
 # Install OpenCode configuration (agents + opencode.json from jsonnet)
 # Global instructions come from ~/.config/opencode/AGENTS.md → canonical pi file.
@@ -242,8 +222,8 @@ clean:
 	@echo "  - ~/.config/opencode/opencode.json"
 	@echo "  - ~/.config/opencode/agents"
 	@echo "  - ~/.config/opencode/AGENTS.md"
-	@echo "  - ~/.agents/skills/<managed-skill> (canonical copies)"
-	@echo "  - ~/.claude/skills/<managed-skill> (CLI-managed links)"
+	@echo ""
+	@echo "Skills are left alone; remove them with 'apm uninstall --global'."
 	@echo ""
 	@read -p "Are you sure? [y/N] " -n 1 -r; \
 	echo ""; \
@@ -257,7 +237,6 @@ clean:
 clean-force:
 	@echo "Removing all configurations..."
 	@$(MAKE) clean-claude
-	@$(MAKE) clean-skills
 	@$(MAKE) clean-opencode
 	@$(MAKE) clean-pi
 	@echo "All configurations removed"
@@ -299,18 +278,6 @@ clean-pi:
 	@echo "  (settings.json left untouched — it is your personal file)"
 	@echo "pi configuration removed"
 
-clean-skills: require-yq
-	@echo "Removing shared skills..."
-	@if command -v npx >/dev/null 2>&1; then \
-		set -e; \
-		skill_names="$$($(SKILLS_MANIFEST_NAMES))"; \
-		$(SKILLS_CLI) remove $$skill_names --global --agent opencode --agent claude-code --yes; \
-	else \
-		echo "  Warning: npx not found, skipping published skill removal"; \
-	fi
-	@rmdir ~/.agents/skills ~/.agents 2>/dev/null || true
-	@echo "Shared skills removed"
-
 # Test commands
 test: check-syntax test-safety test-sync-smoke
 	@echo "All checks passed!"
@@ -342,15 +309,13 @@ check-syntax:
 	done
 	@echo "Checking YAML files..."
 	@if command -v yq >/dev/null 2>&1; then \
-		echo "  Checking skills.yaml"; \
-		yq '.' skills.yaml >/dev/null || { echo "Error: Invalid YAML in skills.yaml"; exit 1; }; \
-		if [ -f skills-int.yaml ]; then \
-			echo "  Checking skills-int.yaml"; \
-			yq '.' skills-int.yaml >/dev/null || { echo "Error: Invalid YAML in skills-int.yaml"; exit 1; }; \
-		fi; \
+		for file in $(SKILLS_MANIFEST); do \
+			echo "  Checking $$file"; \
+			yq '.' "$$file" >/dev/null || { echo "Error: Invalid YAML in $$file"; exit 1; }; \
+		done; \
 	else \
 		echo "  Warning: yq not found, skipping YAML checks"; \
 	fi
 	@echo "Syntax check passed"
 
-.PHONY: all require-stow require-npx require-yq require-jq require-jsonnet clean clean-force clean-claude clean-skills clean-opencode clean-pi sync sync-agents-md sync-agents-md-force sync-claude sync-claude-force sync-ccstatusline sync-skills sync-opencode sync-opencode-force sync-pi sync-pi-force test test-safety test-sync-smoke check-syntax
+.PHONY: all require-stow require-jq require-jsonnet clean clean-force clean-claude clean-opencode clean-pi sync sync-agents-md sync-agents-md-force sync-claude sync-claude-force sync-ccstatusline sync-opencode sync-opencode-force sync-pi sync-pi-force test test-safety test-sync-smoke check-syntax

@@ -1,7 +1,8 @@
 # agent-configs
 
 Personal configuration for AI coding agents (Claude Code, OpenCode, pi) and the
-Claude status line, managed with `make` and a pinned skills CLI. Split out of my
+Claude status line, managed with `make`; skills are managed separately with
+[apm](https://github.com/microsoft/apm). Split out of my
 [dotfiles](https://github.com/John-Lin/dotfiles) so editor/shell/desktop config
 and agent config can evolve independently.
 
@@ -31,7 +32,6 @@ make sync-claude        # Claude Code config (CLAUDE.md→AGENTS.md, settings.js
 make sync-ccstatusline  # ccstatusline config
 make sync-opencode      # OpenCode agents + generated opencode.json + AGENTS.md
 make sync-pi            # pi canonical AGENTS.md + packages injection
-make sync-skills        # upstream skills → ~/.agents/skills/<name>
 
 make sync-agents-md-force  # regenerate canonical AGENTS.md only (after editing AGENTS.personal.md)
 make sync-claude-force
@@ -76,17 +76,22 @@ symlinks: `~/.claude/CLAUDE.md` and `~/.config/opencode/AGENTS.md`. Any of
 `make sync-claude` / `sync-opencode` / `sync-pi` regenerates the canonical file
 as needed.
 
-Shared skills use `~/.agents/skills/<name>` as the universal location. `make
-sync-skills` installs them from their upstream repositories with the pinned
-`skills@1.5.19` CLI.
-OpenCode and pi read the universal path natively; the CLI creates one symlink per
-managed skill under `~/.claude/skills/` for Claude Code. See `docs/ai.md`.
+Shared skills are **not** managed by make. They are installed with
+[apm](https://github.com/microsoft/apm) directly, into `~/.agents/skills/<name>`
+(read natively by OpenCode and pi) and `~/.claude/skills/<name>` (the only skill
+directory Claude Code discovers):
 
-To add a skill, add it to `skills.yaml` (repo → skill names) and rerun `make
-sync-skills`. Install, removal, and the smoke test all read that manifest.
+```bash
+mkdir -p ~/.apm && cp apm/apm.yml ~/.apm/apm.yml   # new machine
+apm install --global
+```
 
-Migrating a machine that already had the old dotfiles installed? See
-`MIGRATION.md`.
+`apm/apm.yml` here is a tracked reference copy of `~/.apm/apm.yml`, which is
+where apm actually reads from. Copy it in either direction by hand; nothing
+syncs it. Machines diverge on purpose — a work machine's manifest can name
+internal repositories that must not be committed. See `docs/ai.md`.
+
+Moving a machine off the previous skills CLI? See `MIGRATION.md`.
 
 Detailed setup:
 - `claude/README.md`
@@ -99,8 +104,8 @@ Detailed setup:
 - Git, Make, GNU Stow (for ccstatusline)
 - `jq`
 - `jsonnet` (for `make sync-opencode`)
-- `yq` (mikefarah v4, `brew install yq` — reads `skills.yaml`)
-- Node.js (provides `npx` for the pinned skills CLI)
+- `yq` (mikefarah v4, `brew install yq` — used by `make check-syntax`)
+- `apm` (`brew install microsoft/apm/apm` — installs skills, outside make)
 - `bun` if required by the locally installed agent runtimes
 - Python 3 (used by `make check-syntax`)
 

@@ -1,0 +1,53 @@
+# Reference copy of ~/.apm/apm.yml, the manifest apm reads at user scope. Its
+# location is fixed and cannot be redirected, so this file is copied into place
+# by hand — nothing syncs it. See docs/ai.md.
+#
+# `apm install --global` deploys every declared skill twice: to
+# ~/.agents/skills/ (the universal directory OpenCode and pi read natively) and
+# to ~/.claude/skills/ (the only skill directory Claude Code discovers).
+#
+# This is the personal machine's manifest. A work machine keeps its own, which
+# may name internal repositories and is never committed here.
+#
+# Pin `ref:` to a tag wherever upstream publishes one. Without a ref the
+# dependency tracks the default branch, and only apm.lock.yaml pins the commit.
+name: agent-configs-skills
+version: 0.1.0
+description: Shared agent skills managed by agent-configs
+
+# Named rather than auto-detected, so deployment is identical on every machine.
+# `agent-skills` is what writes ~/.agents/skills/ — pi is not an apm target at
+# all, and that directory is otherwise only filled as a side effect of OpenCode
+# being detected. Naming both also keeps apm out of ~/.config/opencode/, which
+# `make sync-opencode` owns.
+targets:
+  - claude
+  - agent-skills
+
+dependencies:
+  apm:
+    # `path:` selects one skill directory out of a repo that is not itself an
+    # apm package. It is also the way to take a single skill from a repo that
+    # ships hooks: a whole-repo dependency deploys those hooks into
+    # ~/.claude/settings.json, which `make sync-claude` owns.
+    - git: cocoon-ai/architecture-diagram-generator
+      path: architecture-diagram
+      ref: "1.1"
+    # Unpinned on purpose: skills/ exists only on the default branch, so every
+    # published context7 tag resolves to a tree without the skill.
+    - git: upstash/context7
+      skills:
+        - find-docs
+    - git: mattpocock/skills
+      ref: v1.1.0
+      skills:
+        - skills/productivity/grill-me
+        - skills/engineering/grill-with-docs
+        - skills/productivity/handoff
+        - skills/productivity/writing-great-skills
+    # superpowers ships hooks/hooks.json. Depending on the whole repo would
+    # register its SessionStart hook in ~/.claude/settings.json even when only
+    # one skill is selected, so take the skill directory directly.
+    - git: obra/superpowers
+      path: skills/test-driven-development
+      ref: v6.2.0
