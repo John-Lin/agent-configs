@@ -38,8 +38,11 @@ dependencies:
     - git: upstash/context7
       skills:
         - find-docs
+    # Pinned to a commit, not to v1.1.0: the tag predates the per-skill
+    # agents/openai.yaml files, and plugin.json already claims 1.2.0, so the
+    # released tag is behind what the default branch ships.
     - git: mattpocock/skills
-      ref: v1.1.0
+      ref: 2ab958093e83e0ec752e6c1c5932da465bf23e0c
       skills:
         - skills/productivity/grill-me
         - skills/engineering/grill-with-docs
