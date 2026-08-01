@@ -49,3 +49,6 @@ dependencies:
     - git: obra/superpowers
       path: skills/test-driven-development
       ref: v6.2.0
+    - git: obra/superpowers
+      path: skills/using-git-worktrees
+      ref: v6.2.0
