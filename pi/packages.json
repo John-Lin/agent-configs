@@ -9,7 +9,17 @@
     ]
   },
   {
-    "source": "git:github.com/John-Lin/pi-extension"
+    "source": "git:github.com/John-Lin/pi-extension",
+    "extensions": [
+      "extensions/notify.ts",
+      "extensions/tps.ts",
+      "extensions/btw/index.ts",
+      "extensions/plan-mode/index.ts",
+      "extensions/split-fork/index.ts"
+    ],
+    "skills": [
+      "skills/native-web-search/SKILL.md"
+    ]
   },
   {
     "source": "git:github.com/mitsuhiko/agent-stuff",
@@ -18,7 +28,6 @@
     ],
     "skills": [
       "skills/commit/SKILL.md",
-      "skills/native-web-search/SKILL.md",
       "skills/uv/SKILL.md",
       "skills/pi-share/SKILL.md",
       "skills/summarize/SKILL.md"
