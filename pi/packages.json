@@ -36,7 +36,7 @@
     "prompts": []
   },
   "npm:pi-mcp-adapter",
-  "npm:pi-discuss-mode",
+  "npm:shift-labs/pi-peer",
   "git:github.com/earendil-works/pi-review-loop",
   "git:github.com/earendil-works/pi-review"
 ]
