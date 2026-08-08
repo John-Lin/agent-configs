@@ -37,12 +37,11 @@ dependencies:
     # agents/openai.yaml files (plugin.json already claims 1.2.0 on default).
     # `apm outdated` flags this against the tag — false positive, ignore it.
     - git: mattpocock/skills
-      ref: 2ab958093e83e0ec752e6c1c5932da465bf23e0c
+      ref: 6acc160e4e0cd062dbbbd7a1b26ae92855edf07e # v1.2.3
       skills:
-        - skills/productivity/grill-me
-        - skills/engineering/grill-with-docs
+        - skills/productivity/grilling
         - skills/productivity/handoff
-        - skills/productivity/writing-great-skills
+        - skills/productivity/writing-for-agents
     # superpowers ships hooks/hooks.json; a whole-repo dep would register its
     # SessionStart hook in ~/.claude/settings.json, so take the skill path
     # directly.
