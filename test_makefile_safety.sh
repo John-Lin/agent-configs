@@ -70,6 +70,15 @@ assert_packages_empty() {
 	fi
 }
 
+assert_package_is_absent() {
+	local settings="$1"
+	local package="$2"
+	if jq -e --arg package "$package" '.packages | index($package)' "$settings" >/dev/null; then
+		printf 'Expected %s .packages not to include: %s\n' "$settings" "$package" >&2
+		exit 1
+	fi
+}
+
 assert_make_fails() {
 	local home_dir="$1"
 	shift
@@ -269,6 +278,15 @@ test_sync_pi_packages_creates_missing_settings() {
 	assert_packages_match_manifest "$settings"
 }
 
+test_sync_pi_packages_excludes_the_global_mcp_adapter() {
+	local settings
+	settings=$(mktemp -d)/settings.json
+	trap '[ -n "${settings-}" ] && rm -rf "$(dirname "$settings")"' RETURN
+
+	bash "$PI_PACKAGES_SCRIPT" "$settings" "$REPO_ROOT/pi/packages.json" >"$TEST_OUTPUT" 2>&1
+	assert_package_is_absent "$settings" 'npm:pi-mcp-adapter'
+}
+
 test_sync_pi_packages_leaves_matching_settings_untouched() {
 	local settings
 	settings=$(mktemp -d)/settings.json
@@ -318,6 +336,7 @@ main() {
 	test_clean_claude_preserves_custom_files
 	test_clean_opencode_preserves_unmanaged_directory
 	test_sync_pi_packages_creates_missing_settings
+	test_sync_pi_packages_excludes_the_global_mcp_adapter
 	test_sync_pi_packages_leaves_matching_settings_untouched
 	test_sync_pi_packages_skips_overwrite_when_declined
 	test_sync_pi_packages_overwrites_when_confirmed
