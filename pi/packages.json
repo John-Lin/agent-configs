@@ -38,7 +38,6 @@
     "themes": [],
     "prompts": []
   },
-  "npm:pi-mcp-adapter",
   "git:github.com/earendil-works/pi-review-loop",
   "git:github.com/earendil-works/pi-review",
   "npm:@shift-labs/pi-peer"
