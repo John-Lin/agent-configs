@@ -17,6 +17,9 @@
       "extensions/plan-mode/index.ts",
       "extensions/split-fork/index.ts"
     ],
+    "prompts": [
+      "commands/discuss.md"
+    ],
     "skills": [
       "skills/native-web-search/SKILL.md"
     ]
