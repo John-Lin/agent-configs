@@ -44,7 +44,5 @@
   "npm:pi-mcp-adapter",
   "git:github.com/earendil-works/pi-review-loop",
   "git:github.com/earendil-works/pi-review",
-  "../../workspace/ly-pi-extension/extensions/ly-custom-header",
-  "../../workspace/ly-pi-extension/extensions/pi-openai-server-compaction",
   "npm:@shift-labs/pi-peer"
 ]
