@@ -28,7 +28,8 @@
     "extensions": [
       "whimsical.ts",
       "goal.ts",
-      "files.ts"
+      "files.ts",
+      "subagent.ts"
     ],
     "prompts": [
       "commands/discuss.md"
@@ -41,8 +42,8 @@
     ],
     "themes": []
   },
-  "npm:pi-mcp-adapter",
   "git:github.com/earendil-works/pi-review-loop",
   "git:github.com/earendil-works/pi-review",
-  "npm:@shift-labs/pi-peer"
+  "npm:@shift-labs/pi-peer",
+  "npm:pi-mcporter"
 ]
