@@ -16,8 +16,7 @@
       "extensions/notify.ts",
       "extensions/tps.ts",
       "extensions/btw/index.ts",
-      "extensions/plan-mode/index.ts",
-      "extensions/split-fork/index.ts"
+      "extensions/plan-mode/index.ts"
     ],
     "skills": [
       "skills/native-web-search/SKILL.md"
