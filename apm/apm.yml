@@ -33,6 +33,8 @@ dependencies:
     - git: upstash/context7
       skills:
         - find-docs
+    - git: John-Lin/pi-extension
+      path: skills/native-web-search
     # Pinned to a commit, not v1.1.0: that tag predates the per-skill
     # agents/openai.yaml files (plugin.json already claims 1.2.0 on default).
     # `apm outdated` flags this against the tag — false positive, ignore it.
