@@ -43,9 +43,9 @@ dependencies:
     - git: mattpocock/skills
       ref: 6acc160e4e0cd062dbbbd7a1b26ae92855edf07e # v1.2.3
       skills:
-        - skills/productivity/grilling
-        - skills/productivity/handoff
-        - skills/productivity/writing-for-agents
+        - grilling
+        - handoff
+        - writing-for-agents
     # superpowers ships hooks/hooks.json; a whole-repo dep would register its
     # SessionStart hook in ~/.claude/settings.json, so take the skill path
     # directly.
