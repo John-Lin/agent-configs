@@ -17,7 +17,8 @@
       "extensions/tps.ts",
       "extensions/btw/index.ts",
       "extensions/plan-mode/index.ts"
-    ]
+    ],
+    "skills": []
   },
   {
     "source": "git:github.com/mitsuhiko/agent-stuff",
