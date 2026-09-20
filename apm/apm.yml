@@ -52,3 +52,9 @@ dependencies:
     - git: obra/superpowers
       path: skills/test-driven-development
       ref: v6.2.0
+    # TypeSafe publishes this skill collection as v0.5.7; pin it so every
+    # machine gets the reviewed release rather than whichever commit is on main.
+    - git: typesafe-ai/skills
+      ref: v0.5.7
+      skills:
+        - typesafe-ai
