@@ -41,6 +41,5 @@
   },
   "git:github.com/earendil-works/pi-review-loop",
   "git:github.com/earendil-works/pi-review",
-  "npm:@shift-labs/pi-peer",
-  "npm:pi-mcporter"
+  "npm:@shift-labs/pi-peer"
 ]
