@@ -56,28 +56,6 @@ make clean
 - `pi/` - pi shared packages
 - `docs/ai.md` - agent overview, OpenCode, Claude settings, MCP setup
 
-## Pi Subagents
-
-Pi uses [badlogic/pi-subagent](https://github.com/badlogic/pi-subagent).
-The shared package manifest keeps the other agent-stuff extensions enabled,
-but excludes its `subagent.ts` tool.
-
-After syncing Pi settings, install the package and expose its CLI:
-
-```bash
-pi install git:github.com/badlogic/pi-subagent
-mkdir -p ~/.pi/agent/bin
-ln -s ../git/github.com/badlogic/pi-subagent/subagent.ts ~/.pi/agent/bin/subagent
-```
-
-Ensure `~/.pi/agent/bin` is on `PATH`, then run `/reload` in Pi.
-The package supplies the `subagent` skill and `/subagent` attach command.
-Requires tmux and Node.js 22.19 or newer.
-
-Run `bash scripts/check-pi-subagent.sh` to verify command and skill registration.
-Add `--live` to verify a real model-backed child on an isolated tmux server;
-this uses your configured provider credentials and retains logs under `/tmp`.
-
 ## Personal Overrides
 
 Personal and work-specific inputs are not tracked by this repository:
