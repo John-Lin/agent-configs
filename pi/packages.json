@@ -26,8 +26,7 @@
     "extensions": [
       "whimsical.ts",
       "goal.ts",
-      "files.ts",
-      "subagent.ts"
+      "files.ts"
     ],
     "prompts": [
       "commands/discuss.md"
@@ -40,6 +39,7 @@
     ],
     "themes": []
   },
+  "git:github.com/badlogic/pi-subagent",
   "git:github.com/earendil-works/pi-review-loop",
   "git:github.com/earendil-works/pi-review",
   "npm:@shift-labs/pi-peer"

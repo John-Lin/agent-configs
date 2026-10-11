@@ -115,6 +115,21 @@ main() {
 	# package from the manifest so the assertion tracks changes automatically.
 	first_pkg=$(jq -r '.. | strings | select(startswith("npm:"))' "$REPO_ROOT/pi/packages.json" | head -1)
 	assert_file_contains "$home_dir/.pi/agent/settings.json" "$first_pkg"
+	# Delegate through badlogic while retaining the other agent-stuff tools.
+	# Sync must preserve this selection in the user's generated settings.
+	if ! jq -e '
+		[.packages[] | select(type == "object") |
+		 select(.source == "git:github.com/mitsuhiko/agent-stuff")] |
+		length == 1 and (.[0].extensions == ["whimsical.ts", "goal.ts", "files.ts"])
+	' "$home_dir/.pi/agent/settings.json" >/dev/null; then
+		printf 'Expected synced settings to keep agent-stuff without its subagent extension\n' >&2
+		exit 1
+	fi
+	if ! jq -e '.packages | index("git:github.com/badlogic/pi-subagent") != null' \
+		"$home_dir/.pi/agent/settings.json" >/dev/null; then
+		printf 'Expected synced settings to install badlogic/pi-subagent\n' >&2
+		exit 1
+	fi
 }
 
 main "$@"
