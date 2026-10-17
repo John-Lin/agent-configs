@@ -40,7 +40,5 @@
     "themes": []
   },
   "git:github.com/badlogic/pi-subagent",
-  "git:github.com/earendil-works/pi-review-loop",
-  "git:github.com/earendil-works/pi-review",
   "npm:@shift-labs/pi-peer"
 ]
