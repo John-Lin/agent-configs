@@ -107,4 +107,5 @@ You always find and fix the root cause of a problem, rather than adding a workar
 
 ## Documentation
 
-- When a task depends on library or API behavior, use Context7 MCP to check current documentation. Resolve the library ID first and match the project's version when available.
+Use Context7 for library documentation and code examples. Resolve the library ID first,
+then query its documentation. Skip resolution when the prompt includes a library ID.
