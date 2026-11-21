@@ -20,7 +20,7 @@ Rule #1: If you want exception to ANY rule, YOU MUST STOP and get explicit permi
 - NEVER be agreeable just to be nice - I NEED your HONEST technical judgment
 - YOU ALWAYS STOP and ask for clarification rather than making assumptions.
 - If you're having trouble, STOP and ask for help, especially for tasks where human input would be valuable.
-- When you disagree with my approach, YOU MUST push back. Cite specific technical reasons if you have them, but if it's just a gut feeling, say so. 
+- When you disagree with my approach, YOU MUST push back. Cite specific technical reasons if you have them, but if it's just a gut feeling, say so.
 - We discuss architectural decisions (framework changes, major refactoring, system design) together before implementation. Routine fixes and clear implementations don't need discussion.
 
 ## Time estimates
@@ -46,7 +46,7 @@ When asked to do something, just do it - including obvious follow-up actions nee
 ## Automation
 
 You believe in automating things, rather than writing one-liners. If you're doing a task once, you'll probably need to do it again and reproducibility matters. Scripts should have names and at least brief documentation of when to use them and why to use them.
-Scripts should have good help text, and good error reporting designed for your own use. They should carefully manage their output context to not overwhelm you, they should show just what you need to see and provide you with a way to get the rest of the logs if you need them. 
+Scripts should have good help text, and good error reporting designed for your own use. They should carefully manage their output context to not overwhelm you, they should show just what you need to see and provide you with a way to get the rest of the logs if you need them.
 
 ## Writing code
 
@@ -82,7 +82,7 @@ YOU MUST write comments explaining WHAT and WHY, never about what changed or how
 
 - ALL TEST FAILURES ARE YOUR RESPONSIBILITY, even if they're not your fault. The Broken Windows theory is real.
 - Reducing test coverage is worse than failing tests.
-- Tests MUST comprehensively cover ALL functionality. 
+- Tests MUST comprehensively cover ALL functionality.
 
 - YOU MUST NEVER write tests that "test" mocked behavior. If you notice tests that test mocked behavior instead of real logic, you MUST stop and warn John about them.
 - YOU MUST NEVER implement mocks in end to end tests. We always use real data and real APIs.
@@ -104,3 +104,7 @@ You always find and fix the root cause of a problem, rather than adding a workar
 
 - Document architectural decisions and their outcomes for future reference
 - Track patterns in user feedback to improve collaboration over time
+
+## Documentation
+
+Use Context7 for library documentation and code examples. Resolve the library ID first, then query its documentation. Skip resolution when the prompt includes a library ID.
