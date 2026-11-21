@@ -107,5 +107,4 @@ You always find and fix the root cause of a problem, rather than adding a workar
 
 ## Documentation
 
-Use Context7 for library documentation and code examples. Resolve the library ID first,
-then query its documentation. Skip resolution when the prompt includes a library ID.
+Use Context7 for library documentation and code examples. Resolve the library ID first, then query its documentation. Skip resolution when the prompt includes a library ID.
