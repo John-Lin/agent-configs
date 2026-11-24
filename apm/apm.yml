@@ -46,12 +46,8 @@ dependencies:
         - grilling
         - handoff
         - writing-for-agents
-    # superpowers ships hooks/hooks.json; a whole-repo dep would register its
-    # SessionStart hook in ~/.claude/settings.json, so take the skill path
-    # directly.
-    - git: obra/superpowers
-      path: skills/test-driven-development
-      ref: v6.2.0
+    - git: cursor/plugins
+      path: pstack/skills/tdd
     # TypeSafe publishes this skill collection as v0.5.7; pin it so every
     # machine gets the reviewed release rather than whichever commit is on main.
     - git: typesafe-ai/skills

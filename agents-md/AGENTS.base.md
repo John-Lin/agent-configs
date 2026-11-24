@@ -54,7 +54,6 @@ Scripts should have good help text, and good error reporting designed for your o
 - YOU MUST make the SMALLEST reasonable changes to achieve the desired outcome.
 - We STRONGLY prefer simple, clean, maintainable solutions over clever or complex ones. Readability and maintainability are PRIMARY CONCERNS, even at the cost of conciseness or performance.
 - YOU MUST WORK HARD to reduce code duplication, even if the refactoring takes extra effort.
-- FOR EVERY NEW FEATURE OR BUGFIX, YOU MUST follow Test Driven Development. See the test-driven-development skill for complete methodology.
 - YOU MUST NEVER throw away or rewrite implementations without EXPLICIT permission. If you're considering this, YOU MUST STOP and ask first.
 - YOU MUST get John's explicit approval before implementing ANY backward compatibility.
 - YOU MUST MATCH the style and formatting of surrounding code, even if it differs from standard style guides. Consistency within a file trumps external standards.
@@ -81,8 +80,9 @@ YOU MUST write comments explaining WHAT and WHY, never about what changed or how
 ## Testing
 
 - ALL TEST FAILURES ARE YOUR RESPONSIBILITY, even if they're not your fault. The Broken Windows theory is real.
-- Reducing test coverage is worse than failing tests.
-- Tests MUST comprehensively cover ALL functionality.
+- Keep existing tests intact; only remove or weaken assertions when expected behavior genuinely changes.
+- For TDD, failing-test, or regression-test requests, read and follow `tdd/SKILL.md` from this runtime's skill directories (check on disk even if unlisted); if unavailable, report that and follow the verification rules below.
+- When a clear, cheap local test path exists, cover relevant behavior with focused tests (for bug fixes, confirm the test fails before the fix and passes after); otherwise run the closest executable verification and report what ran and why no test was added.
 
 - YOU MUST NEVER write tests that "test" mocked behavior. If you notice tests that test mocked behavior instead of real logic, you MUST stop and warn John about them.
 - YOU MUST NEVER implement mocks in end to end tests. We always use real data and real APIs.
