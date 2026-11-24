@@ -25,32 +25,14 @@ dependencies:
     # `path:` pulls one skill out of a repo that isn't itself an apm package
     # (or that ships hooks — a whole-repo dep would deploy those into
     # ~/.claude/settings.json, which `make sync-claude` owns).
-    - git: cocoon-ai/architecture-diagram-generator
-      path: architecture-diagram
-      ref: "1.1"
-    # Unpinned on purpose: skills/ only exists on the default branch; every
-    # published tag resolves to a tree without it.
-    - git: upstash/context7
-      skills:
-        - find-docs
-    - git: John-Lin/pi-extension
-      path: skills/native-web-search
-    - git: John-Lin/pi-extension
-      path: skills/gemini-web-search
-    # Pinned to a commit, not v1.1.0: that tag predates the per-skill
-    # agents/openai.yaml files (plugin.json already claims 1.2.0 on default).
-    # `apm outdated` flags this against the tag — false positive, ignore it.
     - git: mattpocock/skills
-      ref: 6acc160e4e0cd062dbbbd7a1b26ae92855edf07e # v1.2.3
+      ref: d1478fcb140db0b93c0c8df17bcfd311844749d0 # v1.3.2
       skills:
-        - grilling
-        - handoff
-        - writing-for-agents
+        - skills/productivity/grilling
+        - skills/productivity/handoff
+        - skills/productivity/writing-for-agents
+    # Cursor's pstack tdd bundle; take the skill path directly rather than the
+    # whole plugin collection. cursor/plugins publishes no tags, so this tracks
+    # the default branch and only apm.lock.yaml pins the commit.
     - git: cursor/plugins
       path: pstack/skills/tdd
-    # TypeSafe publishes this skill collection as v0.5.7; pin it so every
-    # machine gets the reviewed release rather than whichever commit is on main.
-    - git: typesafe-ai/skills
-      ref: v0.5.7
-      skills:
-        - typesafe-ai
