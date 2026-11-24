@@ -278,16 +278,6 @@ clean-pi:
 	@echo "  (settings.json left untouched — it is your personal file)"
 	@echo "pi configuration removed"
 
-# Test commands
-test: check-syntax test-safety test-sync-smoke
-	@echo "All checks passed!"
-
-test-safety:
-	@bash "./test_makefile_safety.sh"
-
-test-sync-smoke:
-	@bash "./test_sync_smoke.sh"
-
 # Check syntax of configuration files
 check-syntax:
 	@echo "Checking syntax..."
@@ -318,4 +308,4 @@ check-syntax:
 	fi
 	@echo "Syntax check passed"
 
-.PHONY: all require-stow require-jq require-jsonnet clean clean-force clean-claude clean-opencode clean-pi sync sync-agents-md sync-agents-md-force sync-claude sync-claude-force sync-ccstatusline sync-opencode sync-opencode-force sync-pi sync-pi-force test test-safety test-sync-smoke check-syntax
+.PHONY: all require-stow require-jq require-jsonnet clean clean-force clean-claude clean-opencode clean-pi sync sync-agents-md sync-agents-md-force sync-claude sync-claude-force sync-ccstatusline sync-opencode sync-opencode-force sync-pi sync-pi-force check-syntax

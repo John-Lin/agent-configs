@@ -38,11 +38,11 @@ make sync-claude-force
 make sync-opencode-force
 make sync-pi-force
 
-make test
+make check-syntax
 make clean
 ```
 
-- `make test` runs syntax checks, safety regression tests, and sync smoke tests.
+- `make check-syntax` validates Jsonnet, JSON, and YAML configuration files.
 - `make clean` removes configuration managed by this project while preserving
   unrelated local files.
 
