@@ -85,7 +85,11 @@ Tracked shared agents currently include:
 
 ## Skills
 
-Skills are tool-neutral and shared through the universal
+Pi loads `native-web-search` and `gemini-web-search` from the
+`John-Lin/pi-extension` package declared in `pi/packages.json`. These two skills
+are not managed by apm.
+
+Other skills are tool-neutral and shared through the universal
 `~/.agents/skills/<name>` location. They are installed with
 [apm](https://github.com/microsoft/apm) directly — `make` is not involved.
 
@@ -129,6 +133,27 @@ The copy is deliberate. Machines diverge — a work machine's manifest can name
 internal repositories that must not be committed, so only the personal manifest
 is tracked here.
 
+### Move the web-search skills from apm to pi
+
+If you installed these skills with apm before, run `make sync-pi` first.
+It replaces the pi package list after confirmation. If you have additional
+personal packages, keep them by copying just the `skills` list from the
+`John-Lin/pi-extension` entry in `pi/packages.json` into the matching entry in
+`~/.pi/agent/settings.json` instead.
+
+Then remove just these two apm dependencies and their deployed copies:
+
+```bash
+apm uninstall --global \
+  John-Lin/pi-extension/skills/native-web-search \
+  John-Lin/pi-extension/skills/gemini-web-search
+```
+
+This removes the apm copies from `~/.agents/skills/` and `~/.claude/skills/`,
+so Claude Code and OpenCode no longer get these two skills from apm. Run
+`/reload` in pi and check that `/skill:native-web-search` and
+`/skill:gemini-web-search` are available. Other apm skills are unaffected.
+
 ### Why `targets:` is written out
 
 ```yaml
@@ -144,9 +169,9 @@ activates `opencode`. Naming them keeps deployment identical on every machine.
 `agent-skills` is the target that writes `~/.agents/skills/` without belonging to
 any one tool, and it is never auto-detected (its root `.agents/` is shared by
 several tools, so its presence proves nothing). **pi is not an apm target at
-all** — apm has no profile for it — so `agent-skills` is what keeps pi supplied.
-Leave it out and `~/.agents/skills/` is only populated as a side effect of
-OpenCode being detected; drop OpenCode and pi silently loses every skill.
+all** — apm has no profile for it — so `agent-skills` makes shared skills
+available to pi. Leave it out and `~/.agents/skills/` is only populated as a
+side effect of OpenCode being detected.
 
 Naming targets also keeps apm out of `~/.config/opencode/`, which
 `make sync-opencode` owns — `~/.config/opencode/agents` is a symlink into this

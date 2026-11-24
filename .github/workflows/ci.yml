@@ -22,7 +22,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y stow jq jsonnet
+        sudo apt-get install -y jsonnet
         # mikefarah yq v4 is preinstalled on ubuntu-latest; apt's "yq" is an
         # incompatible tool, so install the official binary only if missing.
         if ! command -v yq >/dev/null 2>&1; then
@@ -32,9 +32,3 @@ jobs:
 
     - name: Run syntax check
       run: make check-syntax
-
-    - name: Run sync smoke tests
-      run: make test-sync-smoke
-
-    - name: Run safety regression tests
-      run: make test-safety

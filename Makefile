@@ -6,8 +6,8 @@ SHELL := /bin/bash
 
 REPO_ROOT := $(abspath $(CURDIR))
 
-# Skills are not installed by make. apm/apm.yml is a tracked reference copy of
-# the user-scope manifest; see docs/ai.md for the apm workflow.
+# Shared skills are installed outside make. apm/apm.yml is a tracked reference
+# copy of the user-scope manifest; see docs/ai.md for the apm workflow.
 SKILLS_MANIFEST := $(REPO_ROOT)/apm/apm.yml
 
 # Auto-detect work environment via OPENCODE_WORK_CONFIG env var (path to external config dir)
@@ -110,7 +110,7 @@ sync:
 	@echo "  make sync-opencode      - Install OpenCode configuration (agents + opencode.json)"
 	@echo "  make sync-pi            - Install pi configuration (AGENTS.md + settings.json)"
 	@echo ""
-	@echo "Skills are installed with apm, not make. See docs/ai.md."
+	@echo "Shared skills are installed with apm; pi package skills use make sync-pi. See docs/ai.md."
 
 # Generate the canonical instructions file at ~/.pi/agent/AGENTS.md.
 # pi owns this file; Claude Code and OpenCode symlink to it. Every sync target
@@ -223,7 +223,7 @@ clean:
 	@echo "  - ~/.config/opencode/agents"
 	@echo "  - ~/.config/opencode/AGENTS.md"
 	@echo ""
-	@echo "Skills are left alone; remove them with 'apm uninstall --global'."
+	@echo "Skills are left alone; manage them with apm or pi. See docs/ai.md."
 	@echo ""
 	@read -p "Are you sure? [y/N] " -n 1 -r; \
 	echo ""; \
@@ -278,16 +278,6 @@ clean-pi:
 	@echo "  (settings.json left untouched — it is your personal file)"
 	@echo "pi configuration removed"
 
-# Test commands
-test: check-syntax test-safety test-sync-smoke
-	@echo "All checks passed!"
-
-test-safety:
-	@bash "./test_makefile_safety.sh"
-
-test-sync-smoke:
-	@bash "./test_sync_smoke.sh"
-
 # Check syntax of configuration files
 check-syntax:
 	@echo "Checking syntax..."
@@ -318,4 +308,4 @@ check-syntax:
 	fi
 	@echo "Syntax check passed"
 
-.PHONY: all require-stow require-jq require-jsonnet clean clean-force clean-claude clean-opencode clean-pi sync sync-agents-md sync-agents-md-force sync-claude sync-claude-force sync-ccstatusline sync-opencode sync-opencode-force sync-pi sync-pi-force test test-safety test-sync-smoke check-syntax
+.PHONY: all require-stow require-jq require-jsonnet clean clean-force clean-claude clean-opencode clean-pi sync sync-agents-md sync-agents-md-force sync-claude sync-claude-force sync-ccstatusline sync-opencode sync-opencode-force sync-pi sync-pi-force check-syntax

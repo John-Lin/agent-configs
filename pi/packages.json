@@ -18,7 +18,10 @@
       "extensions/tps.ts",
       "extensions/btw/index.ts"
     ],
-    "skills": []
+    "skills": [
+      "skills/native-web-search/SKILL.md",
+      "skills/gemini-web-search/SKILL.md"
+    ]
   },
   {
     "source": "git:github.com/mitsuhiko/agent-stuff",
