@@ -81,7 +81,6 @@ YOU MUST write comments explaining WHAT and WHY, never about what changed or how
 
 - ALL TEST FAILURES ARE YOUR RESPONSIBILITY, even if they're not your fault. The Broken Windows theory is real.
 - Keep existing tests intact; only remove or weaken assertions when expected behavior genuinely changes.
-- For TDD, failing-test, or regression-test requests, read and follow `tdd/SKILL.md` from this runtime's skill directories (check on disk even if unlisted); if unavailable, report that and follow the verification rules below.
 - When a clear, cheap local test path exists, cover relevant behavior with focused tests (for bug fixes, confirm the test fails before the fix and passes after); otherwise run the closest executable verification and report what ran and why no test was added.
 
 - YOU MUST NEVER write tests that "test" mocked behavior. If you notice tests that test mocked behavior instead of real logic, you MUST stop and warn John about them.
