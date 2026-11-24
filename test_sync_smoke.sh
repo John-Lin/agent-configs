@@ -115,6 +115,18 @@ main() {
 	# package from the manifest so the assertion tracks changes automatically.
 	first_pkg=$(jq -r '.. | strings | select(startswith("npm:"))' "$REPO_ROOT/pi/packages.json" | head -1)
 	assert_file_contains "$home_dir/.pi/agent/settings.json" "$first_pkg"
+
+	if ! jq -e '
+		any(.packages[]; type == "object"
+			and .source == "git:github.com/John-Lin/pi-extension"
+			and .skills == [
+				"skills/native-web-search/SKILL.md",
+				"skills/gemini-web-search/SKILL.md"
+			])
+	' "$home_dir/.pi/agent/settings.json" >/dev/null; then
+		printf 'Expected pi to manage only the two web-search skills from John-Lin/pi-extension\n' >&2
+		exit 1
+	fi
 }
 
 main "$@"

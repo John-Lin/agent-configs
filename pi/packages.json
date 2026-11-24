@@ -19,7 +19,10 @@
       "extensions/btw/index.ts",
       "extensions/plan-mode/index.ts"
     ],
-    "skills": []
+    "skills": [
+      "skills/native-web-search/SKILL.md",
+      "skills/gemini-web-search/SKILL.md"
+    ]
   },
   {
     "source": "git:github.com/mitsuhiko/agent-stuff",

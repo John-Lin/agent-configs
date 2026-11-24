@@ -1,8 +1,8 @@
 # agent-configs
 
 Personal configuration for AI coding agents (Claude Code, OpenCode, pi) and the
-Claude status line, managed with `make`; skills are managed separately with
-[apm](https://github.com/microsoft/apm). Split out of my
+Claude status line, managed with `make`; shared skills are managed separately
+with [apm](https://github.com/microsoft/apm). Split out of my
 [dotfiles](https://github.com/John-Lin/dotfiles) so editor/shell/desktop config
 and agent config can evolve independently.
 
@@ -75,6 +75,11 @@ The shared instructions are generated once as the canonical
 symlinks: `~/.claude/CLAUDE.md` and `~/.config/opencode/AGENTS.md`. Any of
 `make sync-claude` / `sync-opencode` / `sync-pi` regenerates the canonical file
 as needed.
+
+The `native-web-search` and `gemini-web-search` skills are managed by pi via
+`pi/packages.json` and enabled by `make sync-pi`. Do not also install them with
+apm. See [the migration steps](docs/ai.md#move-the-web-search-skills-from-apm-to-pi)
+if they are already installed with apm.
 
 Shared skills are **not** managed by make. They are installed with
 [apm](https://github.com/microsoft/apm) directly, into `~/.agents/skills/<name>`
