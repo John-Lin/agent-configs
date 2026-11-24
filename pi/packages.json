@@ -16,8 +16,7 @@
     "extensions": [
       "extensions/notify.ts",
       "extensions/tps.ts",
-      "extensions/btw/index.ts",
-      "extensions/plan-mode/index.ts"
+      "extensions/btw/index.ts"
     ],
     "skills": []
   },
@@ -25,8 +24,7 @@
     "source": "git:github.com/mitsuhiko/agent-stuff",
     "extensions": [
       "whimsical.ts",
-      "goal.ts",
-      "files.ts"
+      "goal.ts"
     ],
     "prompts": [
       "commands/discuss.md"
