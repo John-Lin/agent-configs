@@ -22,9 +22,17 @@ targets:
 
 dependencies:
   apm:
+    # `path:` pulls one skill out of a repo that isn't itself an apm package
+    # (or that ships hooks — a whole-repo dep would deploy those into
+    # ~/.claude/settings.json, which `make sync-claude` owns).
     - git: mattpocock/skills
       ref: d1478fcb140db0b93c0c8df17bcfd311844749d0 # v1.3.2
       skills:
         - skills/productivity/grilling
         - skills/productivity/handoff
         - skills/productivity/writing-for-agents
+    # Cursor's pstack tdd bundle; take the skill path directly rather than the
+    # whole plugin collection. cursor/plugins publishes no tags, so this tracks
+    # the default branch and only apm.lock.yaml pins the commit.
+    - git: cursor/plugins
+      path: pstack/skills/tdd
