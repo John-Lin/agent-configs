@@ -41,5 +41,6 @@
     "themes": []
   },
   "git:github.com/badlogic/pi-subagent",
-  "npm:@shift-labs/pi-peer"
+  "npm:@shift-labs/pi-peer",
+  "git:github.com/johnlindquist/pi-emphasis"
 ]
