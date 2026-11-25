@@ -36,3 +36,7 @@ dependencies:
     # the default branch and only apm.lock.yaml pins the commit.
     - git: cursor/plugins
       path: pstack/skills/tdd
+    - git: tobi/qmd
+      ref: aa247d0ee2e5dc3b83e1270714c0f06ca94e2514 # v2.9.0
+      skills:
+        - qmd
